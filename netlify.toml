@@ -1,12 +1,30 @@
 [build]
-  # Merge the customer site (public/) and the admin dashboard (admin/)
-  # into one folder before publishing, so /admin/... actually exists
-  # on the deployed site instead of falling through to the homepage.
-  command = "rm -rf .netlify-publish && mkdir -p .netlify-publish && cp -r public/. .netlify-publish/ && cp -r admin .netlify-publish/admin"
-  publish = ".netlify-publish"
+  publish = "public"
 
-# No blanket catch-all redirect: this app doesn't use client-side path
-# routing (it uses query strings like login.html?next=...), so a
-# "/* -> /index.html" rewrite only hides real 404s (missing pages,
-# typo'd asset paths, etc.) behind a broken homepage instead of
-# showing them properly.
+# Admin Portal Routing
+[[redirects]]
+  from = "/admin"
+  to = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/:splat"
+  status = 200
+
+# Supplier Portal Routing
+[[redirects]]
+  from = "/supplier"
+  to = "/supplier/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/supplier/*"
+  to = "/supplier/:splat"
+  status = 200
+
+# Fallback for main user single-page routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
