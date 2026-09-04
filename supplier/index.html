@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rider · Deliveries — Mama Tolu's Kitchen</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 40px;">
+  <script src="/js/ui.js"></script>
+  <div id="supplier-nav"></div>
+
+  <div class="container" style="padding-top: 12px; max-width: 720px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+      <h1 class="display" style="margin:0;">Deliveries</h1>
+    </div>
+
+    <div class="inbox-tabs" id="tabs"></div>
+
+    <div id="orders-list"><p class="helper-text">Loading…</p></div>
+  </div>
+
+  <script src="/admin/js/api.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/supplier/js/supplier-nav.js"></script>
+  <script src="/supplier/js/supplier-orders.js"></script>
+</body>
+</html>

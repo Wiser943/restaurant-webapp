@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Orders — Mama Tolu's Kitchen</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16120e" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body>
+  <script src="/js/ui.js"></script>
+  <div id="topbar"></div>
+
+  <div class="container" id="orders-container" style="padding-top: 12px;">
+    <p class="eyebrow">Order history</p>
+    <h1 class="display" style="margin-bottom: 20px;">Your orders</h1>
+    <div id="orders-content"><p class="helper-text">Loading…</p></div>
+  </div>
+
+  <div id="tabbar"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+  const container = document.getElementById("orders-container");
+    async function loadOrders() {
+  let orders = [];
+  try {
+    const data = await api.get('/orders');
+    // Safely extract array whether backend sends { orders: [...] } or direct array [...]
+    orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
+  } catch (e) {
+    /* ignore or console.error(e) */
+  }
+
+  if (!orders.length) {
+    container.innerHTML = '<div class="empty-state"><p class="eyebrow">No orders found</p></div>';
+    return;
+  }
+
+      const statusMap = { pending: ['badge-pending', 'Awaiting approval'], approved: ['badge-approved', 'Confirmed'], rejected: ['badge-rejected', 'Rejected'] };
+      const deliveryMap = { out_for_delivery: ['badge-approved', 'fa-motorcycle', 'Out for delivery'], completed: ['badge-approved', 'fa-circle-check', 'Delivered'] };
+
+      container.innerHTML = orders.map((o) => {
+        const [cls, label] = statusMap[o.paymentStatus] || statusMap.pending;
+        const delivery = deliveryMap[o.orderStatus];
+        return `
+          <a href="order.html?id=${o._id}" class="card order-list-row">
+            <div>
+              <p style="margin:0 0 4px; font-weight:600;">Order #${o.orderNumber || o._id.slice(-6).toUpperCase()}</p>
+              <p class="helper-text" style="margin:0;">${new Date(o.createdAt).toLocaleDateString()} · ${currency(o.totalAmount)}</p>
+            </div>
+            <span class="badge ${delivery ? delivery[0] : cls}">${delivery ? `<i class="fa-solid ${delivery[1]}"></i> ${delivery[2]}` : label}</span>
+          </a>`;
+      }).join('');
+    }
+    loadOrders();
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Support — Mama Tolu's Kitchen</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16120e" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body>
+  <script src="/js/ui.js"></script>
+  <div id="topbar"></div>
+
+  <div class="container" style="padding-top: 12px;">
+    <div id="support-header"></div>
+    <div id="order-status-wrap"></div>
+    <div id="quick-issues-wrap"></div>
+    <div id="contact-card"></div>
+
+    <div class="card chat-page" style="padding:10px;">
+      <div id="chat-scroll" class="chat-scroll"><p class="helper-text">Loading…</p></div>
+      <div class="chat-input-bar">
+        <textarea id="chat-input" rows="1" placeholder="Type your message…"></textarea>
+        <button class="btn btn-primary btn-icon" id="chat-send" aria-label="Send">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+      <p class="error-text" id="chat-error" style="display:none; margin: 0 8px 8px;"></p>
+    </div>
+  </div>
+
+  <div id="tabbar"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/support-page.js"></script>
+</body>
+</html>
