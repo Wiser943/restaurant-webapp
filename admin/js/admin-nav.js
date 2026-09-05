@@ -6,6 +6,7 @@ async function requireAdmin() {
     const data = await api.get('/auth/me');
     if (data.user.role !== 'admin') { window.location.href = '/index.html'; return null; }
     renderAdminNav(data.user);
+    Push.subscribe();
     return data.user;
   } catch (e) {
     window.location.href = '/login.html?next=/admin/index.html';

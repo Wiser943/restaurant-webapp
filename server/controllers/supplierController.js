@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const SupportMessage = require('../models/SupportMessage');
 const { getIO } = require('../config/socket');
+const { sendPushToUser, sendPushToRole } = require('../utils/sendPush');
 
 // GET /api/supplier/orders
 // Everything ever assigned to this rider, most recent first. The frontend
@@ -88,6 +89,19 @@ exports.reportIssue = async (req, res, next) => {
     getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
     getIO().to('admins').emit('support:message', note);
     getIO().to('admins').emit('order:updated', order);
+
+    sendPushToUser(order.user, {
+      title: `Order #${order.orderNumber} · Delivery update`,
+      body: note.message,
+      url: `/support.html?order=${encodeURIComponent(order.orderNumber)}`,
+      tag: `support-${order.user}`,
+    }).catch((err) => console.error('[reportIssue] customer push failed:', err.message));
+    sendPushToRole('admin', {
+      title: `Delivery issue · Order #${order.orderNumber}`,
+      body: note.message,
+      url: `/admin/support.html`,
+      tag: 'delivery-issue',
+    }).catch((err) => console.error('[reportIssue] admin push failed:', err.message));
 
     res.json({ order, message: note });
   } catch (err) {

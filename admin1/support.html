@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Support — Mama Tolu's Kitchen</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 40px;">
+  <script src="/js/ui.js"></script>
+  <div id="admin-nav"></div>
+
+  <div class="container" style="padding-top: 12px; max-width: 900px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <h1 class="display" style="margin:0;">Support Inbox</h1>
+    </div>
+
+    <div id="inbox-tabs-wrap"></div>
+
+    <div id="support-layout" style="display:flex; gap:20px; align-items:flex-start;">
+      <div id="convo-list" style="flex: 0 0 260px; max-width:260px;"><p class="helper-text">Loading…</p></div>
+
+      <div id="thread-panel" style="flex:1; min-width:0;">
+        <div class="card" id="thread-header" style="padding:14px 16px; margin-bottom:10px; display:none;"></div>
+        <div id="thread-order-wrap"></div>
+        <div class="card" style="padding:10px;">
+          <div id="chat-scroll" class="chat-scroll" style="height: 46vh;"><p class="helper-text">Pick a conversation on the left.</p></div>
+          <div class="chat-input-bar" id="thread-input-bar" style="display:none;">
+            <input id="order-ref-input" placeholder="Order # (optional)" style="max-width:150px; background:var(--glass); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:10px 12px; color:var(--ink); font-size:13px;" />
+            <textarea id="chat-input" rows="1" placeholder="Reply…"></textarea>
+            <button class="btn btn-primary btn-sm" id="chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+          </div>
+        </div>
+        <div id="thread-actions-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/admin/js/api.js"></script>
+  <script src="/admin/js/admin-nav.js"></script>
+  <script src="/admin/js/admin-support.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Menu — Mama Tolu's Kitchen</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 40px;">
+  <script src="/js/ui.js"></script>
+  <div id="admin-nav"></div>
+
+  <div class="container" style="padding-top: 12px; max-width: 720px;">
+    <h1 class="display" style="margin-bottom:16px;">Menu items</h1>
+
+    <button class="btn btn-primary btn-sm" id="new-item-btn" style="margin-bottom:16px;">+ Add new item</button>
+
+    <div id="item-form-wrap"></div>
+
+    <div id="menu-list"><p class="helper-text">Loading…</p></div>
+  </div>
+
+  <!-- Scripts at the bottom of <body> -->
+<script src="/admin/js/api.js"></script>
+<script src="/admin/js/admin-nav.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/admin/js/admin-menu.js"></script>
+</body>
+</html>

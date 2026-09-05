@@ -36,6 +36,25 @@ function formatEta(dateStr) {
 }
 
 function renderDeliveryBanner() {
+  // Once a Chowdeck rider is involved, prefer their live status text (kept
+  // up to date by the webhook handler) over our own generic wording —
+  // that's the "customer's tracker screen updates automatically" part.
+  const cd = order.delivery?.chowdeck;
+  if (cd?.friendlyStatus && order.orderStatus !== 'completed') {
+    return `
+      <div class="delivery-banner">
+        <div class="delivery-banner-icon"><i class="fa-solid fa-motorcycle"></i></div>
+        <div>
+          <p class="delivery-banner-title">${cd.friendlyStatus}</p>
+          <p class="delivery-banner-sub">
+            ${cd.riderName ? `${cd.riderName}${cd.riderPhone ? ` · ${cd.riderPhone}` : ''}` : 'Chowdeck Relay'}
+            ${order.delivery?.etaMinutes ? ` · ~${order.delivery.etaMinutes} min` : ''}
+          </p>
+          ${cd.trackingUrl ? `<a href="${cd.trackingUrl}" target="_blank" rel="noopener" class="helper-text" style="text-decoration:underline;">Track rider live →</a>` : ''}
+        </div>
+      </div>`;
+  }
+
   if (order.orderStatus === 'out_for_delivery') {
     return `
       <div class="delivery-banner">
@@ -53,6 +72,22 @@ function renderDeliveryBanner() {
         <div>
           <p class="delivery-banner-title">Delivered</p>
           <p class="delivery-banner-sub">${order.deliveredAt ? `Delivered at ${new Date(order.deliveredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Enjoy your meal!'}</p>
+        </div>
+      </div>`;
+  }
+  // Before dispatch, still show what to expect: free in-house walk/bike, or
+  // the Chowdeck fare + ETA already resolved at checkout.
+  if (order.delivery?.mode && (order.orderStatus === 'pending' || order.orderStatus === 'confirmed' || order.orderStatus === 'preparing')) {
+    const isInHouse = order.delivery.mode === 'IN_HOUSE';
+    return `
+      <div class="delivery-banner">
+        <div class="delivery-banner-icon"><i class="fa-solid ${isInHouse ? 'fa-shop' : 'fa-motorcycle'}"></i></div>
+        <div>
+          <p class="delivery-banner-title">${isInHouse ? 'In-house delivery' : 'Chowdeck Relay'}</p>
+          <p class="delivery-banner-sub">
+            ${isInHouse ? 'Free — our own rider will bring it over.' : `${currency(order.delivery.fee)} delivery fee`}
+            ${order.delivery.etaMinutes ? ` · ~${order.delivery.etaMinutes} min` : ''}
+          </p>
         </div>
       </div>`;
   }

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Settings — Mama Tolu's Kitchen</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 40px;">
+  <script src="/js/ui.js"></script>
+  <div id="admin-nav"></div>
+
+  <div class="container" style="padding-top: 12px; max-width: 560px;">
+    <h1 class="display" style="margin-bottom:16px;">Bank account details</h1>
+    <p class="helper-text" style="margin-bottom:16px;">This is what customers see at checkout, telling them where to send payment.</p>
+
+    <div class="card" style="padding:20px; margin-bottom:30px;">
+      <div class="field"><label>Bank name</label><input id="s-bank" /></div>
+      <div class="field"><label>Account number</label><input id="s-account" /></div>
+      <div class="field"><label>Account name</label><input id="s-name" /></div>
+      <div class="field"><label>Instructions shown to customers</label><textarea id="s-instructions" rows="2"></textarea></div>
+      <button class="btn btn-primary" id="save-payment-btn">Save</button>
+      <p class="error-text" id="payment-error" style="display:none;"></p>
+      <p class="helper-text" id="payment-saved" style="display:none; color: var(--sage);">Saved <i class="fa-solid fa-check"></i></p>
+    </div>
+
+    <h1 class="display" style="margin-bottom:16px;">Contact details</h1>
+    <p class="helper-text" style="margin-bottom:16px;">Shown to customers on the Support page as a way to reach you directly.</p>
+
+    <div class="card" style="padding:20px; margin-bottom:30px;">
+      <div class="field"><label>Phone</label><input id="c-phone" placeholder="+234…" /></div>
+      <div class="field"><label>WhatsApp</label><input id="c-whatsapp" placeholder="+234…" /></div>
+      <div class="field"><label>Email</label><input id="c-email" type="email" /></div>
+      <div class="field"><label>Hours</label><input id="c-hours" placeholder="Mon–Sat, 9am – 9pm" /></div>
+      <div class="field"><label>Address</label><textarea id="c-address" rows="2"></textarea></div>
+      <button class="btn btn-primary" id="save-contact-btn">Save</button>
+      <p class="error-text" id="contact-error" style="display:none;"></p>
+      <p class="helper-text" id="contact-saved" style="display:none; color: var(--sage);">Saved <i class="fa-solid fa-check"></i></p>
+    </div>
+
+    <h1 class="display" style="margin-bottom:16px;">Delivery staff</h1>
+    <p class="helper-text" style="margin-bottom:16px;">Create rider logins so you can assign orders for delivery. Riders sign in at the same login page and land on their own delivery dashboard.</p>
+
+    <div class="card" style="padding:20px; margin-bottom:20px;">
+      <div class="field"><label>Rider name</label><input id="r-name" /></div>
+      <div class="field"><label>Email</label><input id="r-email" type="email" /></div>
+      <div class="field"><label>Phone</label><input id="r-phone" /></div>
+      <div class="field"><label>Temporary password</label><input id="r-password" type="text" /></div>
+      <button class="btn btn-primary" id="add-rider-btn"><i class="fa-solid fa-plus"></i> Add rider</button>
+      <p class="error-text" id="rider-error" style="display:none;"></p>
+    </div>
+    <div id="rider-list" style="margin-bottom:30px;"><p class="helper-text">Loading…</p></div>
+
+    <h1 class="display" style="margin-bottom:16px;">Ads & banners</h1>
+    <button class="btn btn-primary btn-sm" id="new-banner-btn" style="margin-bottom:16px;">+ Add banner</button>
+    <div id="banner-form-wrap"></div>
+    <div id="banner-list"><p class="helper-text">Loading…</p></div>
+  </div>
+
+  <script src="/admin/js/api.js"></script>
+  <script src="/admin/js/admin-nav.js"></script>
+  <script src="/admin/js/admin-settings.js"></script>
+</body>
+</html>

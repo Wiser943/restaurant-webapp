@@ -20,8 +20,51 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Everything about HOW an order gets from the kitchen to the customer -
+// populated at checkout by the proximity/quote logic in deliveryController,
+// then kept up to date by the Chowdeck webhook if it's a Relay delivery.
+const deliverySchema = new mongoose.Schema(
+  {
+    mode: { type: String, enum: ['IN_HOUSE', 'CHOWDECK_RELAY'], default: 'IN_HOUSE' },
+
+    // Customer's checkout-time coordinates (HTML5 Geolocation) and the
+    // straight-line distance from the restaurant, computed server-side.
+    customerLocation: {
+      lat: { type: Number },
+      lng: { type: Number },
+    },
+    distanceKm: { type: Number },
+
+    // What the customer is actually charged for delivery. ₦0 for IN_HOUSE;
+    // for CHOWDECK_RELAY this is the exact rider fare from Chowdeck's quote,
+    // passed straight through with no markup.
+    fee: { type: Number, default: 0 },
+
+    // Our own estimate, since Chowdeck's quote endpoint has no live timer.
+    etaMinutes: { type: Number },
+    etaAt: { type: Date },
+
+    // Only populated once this order is routed through Chowdeck Relay.
+    chowdeck: {
+      feeId: { type: Number }, // from the /relay/delivery/fee quote
+      deliveryReference: { type: String, index: true }, // our reference sent to Chowdeck
+      deliveryId: { type: Number }, // Chowdeck's internal delivery id
+      trackingUrl: { type: String },
+      riderName: { type: String },
+      riderPhone: { type: String },
+      status: { type: String }, // raw Chowdeck status, e.g. "picked", "arrived"
+      friendlyStatus: { type: String }, // customer-facing text, set by the webhook handler
+      lastWebhookAt: { type: Date },
+      lastWebhookCategory: { type: String }, // e.g. "ORDER_PICKED_UP"
+    },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
+    delivery: { type: deliverySchema, default: () => ({}) },
+
     // Short, human-friendly ID (e.g. "MT-260902-8F3K1A") shown to the customer
     // and used to look the order up in support chat / admin search. The Mongo
     // _id still exists underneath but is no longer what people read out loud.

@@ -17,8 +17,13 @@ const supportMessageSchema = new mongoose.Schema(
     message: { type: String, required: true, trim: true },
 
     // Whether this message has been seen by the "other side" yet, used for unread badges.
+    // A thread is either a customer<->admin thread or a supplier<->admin thread
+    // (never both), so only the relevant one of readByCustomer/readBySupplier
+    // is ever meaningfully used for a given `user` — the other stays false
+    // and unused, which is harmless.
     readByAdmin: { type: Boolean, default: false },
     readByCustomer: { type: Boolean, default: false },
+    readBySupplier: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

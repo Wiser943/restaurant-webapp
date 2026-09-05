@@ -25,6 +25,7 @@ async function renderNav() {
   try {
     const data = await api.get('/auth/me');
     user = data.user;
+    Push.subscribe(); // fire-and-forget; no-op if already subscribed or permission not granted yet
   } catch (e) { /* not logged in - totally normal on a public menu page */ }
 
   // Find out how many items are in the cart (only makes sense if logged in)

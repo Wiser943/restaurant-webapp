@@ -3,6 +3,9 @@ const Cart = require('../models/Cart');
 const MenuItem = require('../models/MenuItem');
 const { getIO } = require('../config/socket');
 const generateOrderNumber = require('../utils/generateOrderNumber');
+const { resolveDelivery } = require('./deliveryController');
+const { normalizeCoords } = require('../utils/geo');
+const { sendPushToRole } = require('../utils/sendPush');
 
 // Generates an orderNumber and retries on the (very unlikely) chance of a
 // collision, since it's a short code rather than a full UUID.
@@ -23,7 +26,7 @@ async function uniqueOrderNumber() {
 // showing paymentStatus === "approved".
 exports.placeOrder = async (req, res, next) => {
   try {
-    const { deliveryAddress, notes, paymentReference, paymentMethod } = req.body;
+    const { deliveryAddress, notes, paymentReference, paymentMethod, customerLocation } = req.body;
 
     const cart = await Cart.findOne({ user: req.user._id }).populate('items.menuItem');
     if (!cart || cart.items.length === 0) {
@@ -57,6 +60,40 @@ exports.placeOrder = async (req, res, next) => {
       totalAmount += menuItem.currentPrice * cartItem.quantity + extrasTotal;
     }
 
+    // --- Delivery routing (Dual-Delivery Proximity Logic) ---
+    // Recomputed here from scratch, server-side, using the food subtotal
+    // above — NEVER trust a fee/mode the client might have sent from an
+    // earlier /api/delivery/quote call, since that's just a preview. This is
+    // the one place a delivery fee actually gets attached to a real order.
+    let delivery = { mode: 'IN_HOUSE', fee: 0 };
+    if (customerLocation) {
+      try {
+        const { lat, lng } = normalizeCoords(customerLocation);
+        const resolved = await resolveDelivery({
+          customerLat: lat,
+          customerLng: lng,
+          orderSubtotal: totalAmount,
+        });
+        delivery = {
+          mode: resolved.mode,
+          customerLocation: { lat, lng },
+          distanceKm: resolved.distanceKm,
+          fee: resolved.fee,
+          etaMinutes: resolved.etaMinutes,
+          etaAt: resolved.etaAt,
+          chowdeck: resolved.mode === 'CHOWDECK_RELAY' ? { feeId: resolved.chowdeck.feeId } : undefined,
+        };
+      } catch (err) {
+        // Don't let a flaky Chowdeck quote or bad coordinates block checkout
+        // entirely — fall back to in-house/₦0 and let an admin sort out
+        // delivery manually, rather than losing the order altogether.
+        console.error('[placeOrder] delivery resolution failed, falling back to IN_HOUSE:', err.message);
+      }
+    }
+    // The delivery fee (₦0 for in-house, Chowdeck's exact fare for relay) is
+    // added straight onto what the customer is asked to pay.
+    totalAmount += delivery.fee;
+
     const orderNumber = await uniqueOrderNumber();
 
     const order = await Order.create({
@@ -69,6 +106,7 @@ exports.placeOrder = async (req, res, next) => {
       paymentMethod,
       deliveryAddress,
       notes,
+      delivery,
       paymentStatus: 'pending',
       orderStatus: 'pending',
     });
@@ -77,14 +115,30 @@ exports.placeOrder = async (req, res, next) => {
     cart.items = [];
     await cart.save();
 
-    // Notify admins in real time that a new order needs review
+    // Notify admins in real time that a new order needs review — both via
+    // the socket (for an open dashboard tab) and a real push notification
+    // (in case no admin currently has the tab open).
     getIO().to('admins').emit('order:new', order);
+    sendPushToRole('admin', {
+      title: 'New order received',
+      body: `Order #${order.orderNumber} — ${currencyLabel(totalAmount)}`,
+      url: `/admin/index.html`,
+      tag: 'new-order',
+    }).catch((err) => console.error('[placeOrder] push failed:', err.message));
 
     res.status(201).json({ order, message: 'Order submitted. Awaiting payment approval.' });
   } catch (err) {
     next(err);
   }
 };
+
+// Tiny local formatter so push payloads read like "₦4,500" without pulling
+// in a frontend-only helper.
+function currencyLabel(amount) {
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(
+    amount
+  );
+}
 
 // GET /api/orders  (the logged-in user's own orders)
 exports.getMyOrders = async (req, res, next) => {

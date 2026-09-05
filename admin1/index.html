@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · Orders — Mama Tolu's Kitchen</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 40px;">
+  <script src="/js/ui.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>
+    eruda.init();
+  </script>
+  <div id="admin-nav"></div>
+
+  <div class="container" style="padding-top: 12px; max-width: 720px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
+      <h1 class="display" style="margin:0;">Orders</h1>
+      <select id="filter-select" class="field" style="margin:0; width:auto;">
+        <option value="pending">Awaiting approval</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+        <option value="">All</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <input id="search-input" placeholder="Search by order number (e.g. MT-260902-8F3K1A)" />
+    </div>
+    <div id="orders-list"><p class="helper-text">Loading…</p></div>
+  </div>
+
+  <!-- Scripts at the bottom of <body> -->
+<script src="/admin/js/api.js"></script>
+<script src="/admin/js/admin-nav.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+ <script src="/admin/js/admin-orders.js"></script>
+</body>
+</html>

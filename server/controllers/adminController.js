@@ -2,6 +2,24 @@ const Order = require('../models/Order');
 const SupportMessage = require('../models/SupportMessage');
 const User = require('../models/User');
 const { getIO } = require('../config/socket');
+const chowdeck = require('../services/chowdeckClient');
+const { sendPushToUser } = require('../utils/sendPush');
+const { calculateVendorPayout, VALID_TIERS } = require('../utils/vendorPayout');
+
+// POST /api/admin/marketplace/payout  { subtotal, tier, chowsmart? }
+// Bookkeeping helper (Section 4) — NOT tied to the in-house/Relay checkout
+// flow above. Use this to reconcile what Chowdeck should be paying out per
+// order when it comes through the main Chowdeck Vendor Dashboard/marketplace
+// rather than through your own site.
+exports.getMarketplacePayout = (req, res) => {
+  try {
+    const { subtotal, tier, chowsmart } = req.body;
+    const result = calculateVendorPayout(subtotal, tier, { chowsmart: Boolean(chowsmart) });
+    res.json({ payout: result });
+  } catch (err) {
+    res.status(400).json({ message: err.message, validTiers: VALID_TIERS });
+  }
+};
 
 // GET /api/admin/orders?status=pending&orderNumber=MT-260902-8F3K1A
 exports.getAllOrders = async (req, res, next) => {
@@ -37,18 +55,58 @@ exports.getAllOrders = async (req, res, next) => {
 // that's what the customer's app treats as "order successful".
 exports.approvePayment = async (req, res, next) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('user', 'name phone email');
     if (!order) return res.status(404).json({ message: 'Order not found.' });
 
     order.paymentStatus = 'approved';
     order.orderStatus = 'confirmed';
     order.reviewedBy = req.user._id;
     order.reviewedAt = new Date();
+
+    // --- Scenario B trigger point ---
+    // Per spec: only once the customer has actually paid do we summon the
+    // Chowdeck rider. Everything before now was just a quote (a fee_id that
+    // expires) — this is the one place Create Delivery gets called.
+    if (order.delivery?.mode === 'CHOWDECK_RELAY' && order.delivery?.chowdeck?.feeId && !order.delivery.chowdeck.deliveryReference) {
+      try {
+        const deliveryReference = `MT-${order.orderNumber}`; // must be unique per Chowdeck's docs
+        const result = await chowdeck.createDelivery({
+          feeId: order.delivery.chowdeck.feeId,
+          reference: deliveryReference,
+          itemType: 'Food',
+          customerDeliveryNote: order.notes || undefined,
+          estimatedOrderAmount: order.totalAmount,
+          destination: {
+            name: order.user.name,
+            phone: order.user.phone || '',
+            email: order.user.email,
+          },
+        });
+
+        order.delivery.chowdeck.deliveryReference = result.deliveryReference || deliveryReference;
+        order.delivery.chowdeck.deliveryId = result.deliveryId;
+        order.delivery.chowdeck.status = result.status;
+        order.delivery.chowdeck.friendlyStatus = 'A Chowdeck rider has been requested for this order.';
+      } catch (err) {
+        // Payment approval should still succeed even if Chowdeck is briefly
+        // down — the admin sees the failure and can retry, rather than the
+        // whole approval failing because of a third-party outage.
+        console.error(`[approvePayment] Chowdeck Create Delivery failed for ${order.orderNumber}:`, err.message);
+        order.delivery.chowdeck.friendlyStatus = 'Could not reach Chowdeck to request a rider — retry from the order.';
+      }
+    }
+
     await order.save();
 
     // Push the update straight to the customer who placed it
-    getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
+    getIO().to(`user:${order.user._id}`).emit('order:statusChanged', order);
     getIO().to('admins').emit('order:updated', order);
+    sendPushToUser(order.user._id, {
+      title: `Order #${order.orderNumber} confirmed`,
+      body: 'Your payment was approved — your order is being prepared.',
+      url: `/order.html?id=${order._id}`,
+      tag: `order-${order._id}`,
+    }).catch((err) => console.error('[approvePayment] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {
@@ -71,14 +129,18 @@ exports.rejectPayment = async (req, res, next) => {
 
     getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
     getIO().to('admins').emit('order:updated', order);
+    sendPushToUser(order.user, {
+      title: `Order #${order.orderNumber}`,
+      body: 'We could not confirm your payment — open the app for details.',
+      url: `/order.html?id=${order._id}`,
+      tag: `order-${order._id}`,
+    }).catch((err) => console.error('[rejectPayment] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {
     next(err);
   }
 };
-
-// PATCH /api/admin/orders/:id/status  { orderStatus }
 // For moving an already-approved order through preparing -> completed, etc.
 exports.updateOrderStatus = async (req, res, next) => {
   try {
@@ -143,6 +205,12 @@ exports.assignSupplier = async (req, res, next) => {
     getIO().to(`user:${supplier._id}`).emit('order:assigned', order);
     getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
     getIO().to('admins').emit('order:updated', order);
+    sendPushToUser(supplier._id, {
+      title: 'New delivery assigned',
+      body: `Order #${order.orderNumber} needs pickup.`,
+      url: `/supplier/index.html`,
+      tag: 'new-delivery',
+    }).catch((err) => console.error('[assignSupplier] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {

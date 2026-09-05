@@ -20,6 +20,9 @@ const paymentInfoRoutes = require('./routes/paymentInfoRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 const contactInfoRoutes = require('./routes/contactInfoRoutes');
 const supplierRoutes = require('./routes/supplierRoutes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
+const pushRoutes = require('./routes/pushRoutes');
+const chowdeckWebhookRoutes = require('./routes/chowdeckWebhookRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -55,6 +58,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Chowdeck webhook signature verification needs the RAW request body, so this
+// must be mounted before the global express.json() parser below — otherwise
+// the body would already be parsed/re-serialized and the HMAC check would
+// never match. See routes/chowdeckWebhookRoutes.js for details.
+app.use('/api/chowdeck-webhook', chowdeckWebhookRoutes);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -69,6 +78,8 @@ app.use('/api/payment-info', paymentInfoRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/contact-info', contactInfoRoutes);
 app.use('/api/supplier', supplierRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/push', pushRoutes);
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // ---- Static File Serving ----

@@ -42,6 +42,21 @@ const DELIVERY_LABEL = {
   cancelled: { label: 'Cancelled', icon: 'fa-circle-xmark', cls: 'badge-rejected' },
 };
 
+// One-line Chowdeck rider status, shown under an order's notes once a
+// Relay delivery has actually been requested for it (see
+// adminController.approvePayment, which fires Create Delivery).
+function renderChowdeckLine(o) {
+  const cd = o.delivery?.chowdeck;
+  if (!cd || o.delivery?.mode !== 'CHOWDECK_RELAY') return '';
+  if (!cd.deliveryReference) return ''; // quoted but payment not approved yet - nothing to show
+  return `
+    <p class="helper-text" style="font-size:12px; margin:0 0 10px;">
+      <i class="fa-solid fa-truck-fast"></i> Chowdeck: ${cd.friendlyStatus || cd.status || 'Requested'}
+      ${cd.riderName ? ` · ${cd.riderName}${cd.riderPhone ? ` (${cd.riderPhone})` : ''}` : ''}
+      ${cd.trackingUrl ? ` · <a href="${cd.trackingUrl}" target="_blank" rel="noopener">Track</a>` : ''}
+    </p>`;
+}
+
 async function fetchAndRender() {
   const list = document.getElementById('orders-list');
   list.innerHTML = `<p class="helper-text">Loading…</p>`;
@@ -86,6 +101,7 @@ async function fetchAndRender() {
       ${o.deliveryAddress ? `<p style="font-size:13px; margin:0 0 10px;"><strong>Delivery:</strong> ${o.deliveryAddress}</p>` : ''}
       ${wasAdjusted && o.priceAdjustmentReason ? `<p class="helper-text" style="font-size:12px; margin:0 0 10px;">Adjusted because: ${o.priceAdjustmentReason}</p>` : ''}
       ${o.assignedSupplierName ? `<p class="helper-text" style="font-size:12px; margin:0 0 10px;"><i class="fa-solid fa-motorcycle"></i> Rider: ${o.assignedSupplierName}</p>` : ''}
+      ${renderChowdeckLine(o)}
 
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         ${o.paymentStatus === 'pending' ? `
@@ -93,8 +109,11 @@ async function fetchAndRender() {
           <button class="btn btn-danger btn-sm reject-btn" data-id="${o._id}"><i class="fa-solid fa-xmark"></i> Reject</button>
         ` : `<span class="badge ${o.paymentStatus === 'approved' ? 'badge-approved' : 'badge-rejected'}">${o.paymentStatus}</span>`}
         ${delivery ? `<span class="badge ${delivery.cls}"><i class="fa-solid ${delivery.icon}"></i> ${delivery.label}</span>` : ''}
+        ${o.delivery?.mode === 'CHOWDECK_RELAY'
+          ? `<span class="badge badge-pending"><i class="fa-solid fa-truck-fast"></i> Chowdeck Relay${o.delivery.fee ? ` · ${currency(o.delivery.fee)}` : ''}</span>`
+          : `<span class="badge badge-approved"><i class="fa-solid fa-shop"></i> In-house</span>`}
         <button class="btn btn-ghost btn-sm adjust-btn" data-id="${o._id}" data-total="${o.totalAmount}"><i class="fa-solid fa-pen"></i> Adjust price</button>
-        ${o.paymentStatus === 'approved' && !o.assignedSupplier ? `<button class="btn btn-ghost btn-sm assign-btn" data-id="${o._id}"><i class="fa-solid fa-motorcycle"></i> Assign rider</button>` : ''}
+        ${o.paymentStatus === 'approved' && !o.assignedSupplier && o.delivery?.mode !== 'CHOWDECK_RELAY' ? `<button class="btn btn-ghost btn-sm assign-btn" data-id="${o._id}"><i class="fa-solid fa-motorcycle"></i> Assign rider</button>` : ''}
         ${o.assignedSupplier && o.orderStatus === 'preparing' ? `<button class="btn btn-ghost btn-sm dispatch-btn" data-id="${o._id}"><i class="fa-solid fa-truck-fast"></i> Dispatch</button>` : ''}
         <a class="btn btn-ghost btn-sm" href="support.html?userId=${o.user?._id || ''}"><i class="fa-regular fa-comment-dots"></i> Message customer</a>
       </div>

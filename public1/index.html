@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Calabar Kitchen</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16120e" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body>
+  <script src="/js/ui.js"></script>
+  <div id="topbar"></div>
+
+  <!-- Greeting header -->
+  <div class="container greeting-row">
+    <div>
+      <p class="hello" id="hello-text">Hi, there <i class="fa-solid fa-hand-peace" style="color:var(--orange);"></i></p>
+      <h1 class="display">Good Food<br />Good <span class="accent">Mood!</span></h1>
+    </div>
+    <a href="account.html" class="avatar-btn glass-circle" id="avatar-link"><i class="fa-solid fa-user"></i></a>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar card">
+    <span><i class="fa-solid fa-magnifying-glass"></i></span>
+    <input type="text" id="search-input" placeholder="Search your favorite food" />
+    <span><i class="fa-solid fa-sliders"></i></span>
+  </div>
+
+  <!-- Categories -->
+  <div class="cat-row" id="category-row"></div>
+
+  <!-- Promo banners -->
+  <div class="banner-strip" id="banner-strip"></div>
+
+  <div class="section-row">
+    <h2 class="display">Popular Now</h2>
+  </div>
+
+  <div class="container">
+    <div class="grid" id="menu-grid">
+      <p class="helper-text">Loading the menu…</p>
+    </div>
+  </div>
+
+  <div id="tabbar"></div>
+
+  <!-- socket.io client, served automatically by the socket.io server 
+  <script src="/socket.io/socket.io.js"></script>
+-->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

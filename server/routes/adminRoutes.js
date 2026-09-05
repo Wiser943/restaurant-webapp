@@ -11,6 +11,7 @@ const {
   createSupplier,
   assignSupplier,
   dispatchOrder,
+  getMarketplacePayout,
 } = require('../controllers/adminController');
 const { createBanner, updateBanner, deleteBanner } = require('../controllers/bannerController');
 const { updatePaymentInfo } = require('../controllers/paymentInfoController');
@@ -47,9 +48,13 @@ router.put('/payment-info', updatePaymentInfo);
 // Contact details (phone/WhatsApp/email) shown to customers
 router.put('/contact-info', updateContactInfo);
 
-// Support chat
+// Support chat — GET /admin/support accepts ?role=customer|supplier to
+// switch between the two inbox tabs (see supportController.getConversations).
 router.get('/support', getConversations);
 router.get('/support/:userId', getConversationMessages);
 router.post('/support/:userId', adminSendMessage);
+
+// Marketplace bookkeeping (Section 4 helper)
+router.post('/marketplace/payout', getMarketplacePayout);
 
 module.exports = router;

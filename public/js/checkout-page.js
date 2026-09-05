@@ -3,6 +3,10 @@
 
 let cart = { items: [] };
 let paymentInfo = null;
+let customerLocation = null; // { lat, lng } from HTML5 Geolocation, captured at checkout
+let deliveryQuote = null; // { mode, fee, etaMinutes, distanceKm } from POST /delivery/quote
+let deliveryState = 'idle'; // 'idle' | 'locating' | 'quoting' | 'ready' | 'error'
+let deliveryError = null;
 
 async function loadCheckout() {
   try {
@@ -23,6 +27,7 @@ async function loadCheckout() {
   } catch (e) { paymentInfo = null; }
 
   renderCheckout();
+  detectLocationAndQuote(); // fires the browser's location permission prompt right at checkout, per spec
 }
 
 function lineTotal(line) {
@@ -51,6 +56,8 @@ function renderCheckout() {
         </div>
       `).join('')}
     </div>
+
+    <div class="card" style="padding:16px; margin-bottom:20px;" id="delivery-wrap"></div>
 
     <div class="card" style="padding:20px; margin-bottom:20px;">
       <p class="eyebrow" style="margin-bottom:10px;">Pay by bank transfer</p>
@@ -85,9 +92,9 @@ function renderCheckout() {
 
     <div class="ticket-tear"></div>
 
-    <div class="cart-total" style="margin-bottom:16px;">
+    <div class="cart-total" style="margin-bottom:16px;" id="total-row">
       <span>Total due</span>
-      <span class="price" style="font-size:20px;">${currency(total)}</span>
+      <span class="price" style="font-size:20px;" id="total-display">${currency(total)}</span>
     </div>
 
     <p class="error-text" id="error-text" style="display:none;"></p>
@@ -97,6 +104,8 @@ function renderCheckout() {
       Your order stays "awaiting approval" until we confirm the payment.
     </p>
   `;
+
+  renderDeliveryCard(); // separate function so re-runs (after locating/quoting) don't wipe the form above
 
   if (paymentInfo) {
     document.getElementById('copy-btn').addEventListener('click', () => {
@@ -109,6 +118,88 @@ function renderCheckout() {
   }
 
   document.getElementById('submit-btn').addEventListener('click', placeOrder);
+}
+
+function foodSubtotal() {
+  return cart.items.reduce((sum, line) => sum + lineTotal(line), 0);
+}
+
+function renderDeliveryCard() {
+  const wrap = document.getElementById('delivery-wrap');
+  if (!wrap) return;
+
+  if (deliveryState === 'locating' || deliveryState === 'quoting') {
+    wrap.innerHTML = `
+      <p class="eyebrow" style="margin-bottom:6px;">Delivery</p>
+      <p class="helper-text"><i class="fa-solid fa-location-crosshairs fa-spin"></i>
+        ${deliveryState === 'locating' ? 'Finding your location…' : 'Working out your delivery fee…'}
+      </p>`;
+    return;
+  }
+
+  if (deliveryState === 'error') {
+    wrap.innerHTML = `
+      <p class="eyebrow" style="margin-bottom:6px;">Delivery</p>
+      <p class="error-text" style="margin:0 0 10px;">${deliveryError}</p>
+      <button class="btn btn-ghost btn-sm" id="retry-location-btn"><i class="fa-solid fa-rotate-right"></i> Try again</button>
+      <p class="helper-text" style="margin-top:8px;">
+        You can still submit — we'll confirm your exact delivery fee in Support after your order comes in.
+      </p>`;
+    document.getElementById('retry-location-btn').addEventListener('click', detectLocationAndQuote);
+    return;
+  }
+
+  if (deliveryState === 'ready' && deliveryQuote) {
+    const isInHouse = deliveryQuote.mode === 'IN_HOUSE';
+    wrap.innerHTML = `
+      <p class="eyebrow" style="margin-bottom:6px;">Delivery</p>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <span><i class="fa-solid ${isInHouse ? 'fa-shop' : 'fa-motorcycle'}"></i>
+          ${isInHouse ? 'In-house delivery (free)' : 'Chowdeck rider'}
+        </span>
+        <span class="price" style="font-family:var(--font-mono);">${deliveryQuote.fee > 0 ? currency(deliveryQuote.fee) : 'Free'}</span>
+      </div>
+      <p class="helper-text" style="margin:6px 0 0;">Estimated arrival in about ${deliveryQuote.etaMinutes} minutes · ${deliveryQuote.distanceKm} km away</p>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = `<p class="eyebrow" style="margin-bottom:6px;">Delivery</p><p class="helper-text">Waiting for location…</p>`;
+}
+
+function updateTotalDisplay() {
+  const totalEl = document.getElementById('total-display');
+  if (!totalEl) return;
+  totalEl.textContent = currency(foodSubtotal() + (deliveryQuote?.fee || 0));
+}
+
+async function detectLocationAndQuote() {
+  deliveryState = 'locating';
+  deliveryError = null;
+  renderDeliveryCard();
+
+  try {
+    const loc = await Geo.getCustomerLocation();
+    customerLocation = { lat: loc.lat, lng: loc.lng };
+
+    deliveryState = 'quoting';
+    renderDeliveryCard();
+
+    const data = await api.post('/delivery/quote', {
+      lat: loc.lat,
+      lng: loc.lng,
+      orderSubtotal: foodSubtotal(),
+    });
+    deliveryQuote = data.delivery;
+    deliveryState = 'ready';
+  } catch (err) {
+    deliveryState = 'error';
+    deliveryError = err.message;
+    deliveryQuote = null;
+  }
+
+  renderDeliveryCard();
+  updateTotalDisplay();
 }
 
 async function placeOrder() {
@@ -124,6 +215,10 @@ async function placeOrder() {
       paymentReference: document.getElementById('note').value,
       paymentMethod: 'bank_transfer',
       notes: document.getElementById('description').value,
+      // Sent whenever we managed to get it — the backend recomputes the
+      // authoritative mode/fee itself from these coordinates rather than
+      // trusting deliveryQuote (that was only ever a preview).
+      customerLocation: customerLocation || undefined,
     });
     Sound.orderPlaced();
     await UI.alert('Your order has been submitted and is awaiting payment approval. We\'ll notify you as soon as it\'s confirmed.', {

@@ -1,4 +1,12 @@
-// Logic for the admin support inbox page
+// Logic for the admin support inbox page.
+//
+// Restructured to add a Suppliers (rider) inbox alongside the existing
+// customer inbox — same thread UI, same real-time/push behavior, just
+// scoped by an "audience" toggle above the existing status tabs. Everything
+// that already worked for customers (status tabs, resolve, assign delivery,
+// real-time push-to-top-of-list) is untouched for that audience; supplier
+// threads just hide the one action ("Assign delivery") that doesn't apply
+// to a conversation that isn't about a specific order.
 
 let conversations = [];
 let activeUserId = new URLSearchParams(window.location.search).get('userId') || null;
@@ -6,6 +14,16 @@ let activeMessages = [];
 let adminUser = null;
 let activeTab = 'all';
 let suppliers = [];
+
+// 'customer' = the existing customer support inbox. 'supplier' = the new
+// rider inbox. Persisted in the URL so a reload / shared link keeps you on
+// the same tab.
+let activeAudience = new URLSearchParams(window.location.search).get('audience') === 'supplier' ? 'supplier' : 'customer';
+
+const AUDIENCES = [
+  { key: 'customer', label: 'Customers', icon: 'fa-user' },
+  { key: 'supplier', label: 'Suppliers', icon: 'fa-motorcycle' },
+];
 
 const TABS = [
   { key: 'all', label: 'All' },
@@ -18,6 +36,7 @@ async function loadSupport() {
   adminUser = await requireAdmin();
   if (!adminUser) return;
 
+  renderAudienceTabs();
   renderTabs();
   await fetchAndRenderConversations();
   api.get('/admin/suppliers').then((d) => { suppliers = d.suppliers; }).catch(() => {});
@@ -32,6 +51,10 @@ async function loadSupport() {
     }
   });
 
+  // Live updates: new messages from EITHER audience arrive over the same
+  // socket event — we just re-fetch whichever list is currently open, so a
+  // customer message pinging in while you're on the Suppliers tab quietly
+  // updates that badge/count next time you switch, without interrupting you.
   const socket = io();
   socket.emit('join:admin');
   socket.on('support:message', (msg) => {
@@ -41,8 +64,43 @@ async function loadSupport() {
       activeMessages.push(msg);
       renderThread();
     }
-    if (msg.sender === 'customer') Sound.ping();
+    if (msg.sender === 'customer' || msg.sender === 'supplier') Sound.ping();
   });
+}
+
+function renderAudienceTabs() {
+  const wrap = document.getElementById('audience-tabs-wrap');
+  wrap.innerHTML = `
+    <div class="inbox-tabs" style="margin-bottom: 10px;">
+      ${AUDIENCES.map((a) => `
+        <button class="inbox-tab ${activeAudience === a.key ? 'active' : ''}" data-key="${a.key}">
+          <i class="fa-solid ${a.icon}"></i> ${a.label}
+        </button>`).join('')}
+    </div>`;
+  wrap.querySelectorAll('.inbox-tab').forEach((btn) => {
+    btn.addEventListener('click', () => switchAudience(btn.dataset.key));
+  });
+}
+
+async function switchAudience(key) {
+  if (key === activeAudience) return;
+  activeAudience = key;
+  activeTab = 'all';
+  activeUserId = null;
+  activeMessages = [];
+  history.replaceState(null, '', `support.html?audience=${activeAudience}`);
+
+  renderAudienceTabs();
+  renderTabs();
+
+  // Reset the thread panel back to its empty state
+  document.getElementById('thread-header').style.display = 'none';
+  document.getElementById('thread-input-bar').style.display = 'none';
+  document.getElementById('thread-order-wrap').innerHTML = '';
+  document.getElementById('thread-actions-wrap').innerHTML = '';
+  document.getElementById('chat-scroll').innerHTML = `<p class="helper-text">Pick a conversation on the left.</p>`;
+
+  await fetchAndRenderConversations();
 }
 
 function conversationBucket(c) {
@@ -66,7 +124,7 @@ function renderTabs() {
 }
 
 async function fetchAndRenderConversations() {
-  const data = await api.get('/admin/support');
+  const data = await api.get(`/admin/support?role=${activeAudience}`);
   conversations = data.conversations;
   renderTabs();
   renderConvoList();
@@ -79,9 +137,10 @@ function initials(name) {
 function renderConvoList() {
   const list = document.getElementById('convo-list');
   const visible = activeTab === 'all' ? conversations : conversations.filter((c) => conversationBucket(c) === activeTab);
+  const emptyLabel = activeAudience === 'supplier' ? 'No rider conversations here.' : 'No conversations here.';
 
   if (!visible.length) {
-    list.innerHTML = `<p class="helper-text">No conversations here.</p>`;
+    list.innerHTML = `<p class="helper-text">${emptyLabel}</p>`;
     return;
   }
 
@@ -89,7 +148,7 @@ function renderConvoList() {
     <div class="card convo-row ${c.user._id === activeUserId ? 'active' : ''}" data-id="${c.user._id}" style="display:flex; align-items:center; gap:10px;">
       <div class="convo-avatar">${initials(c.user.name)}</div>
       <div style="flex:1; min-width:0;">
-        <p class="convo-name">${c.user.name || 'Customer'}</p>
+        <p class="convo-name">${c.user.name || (activeAudience === 'supplier' ? 'Rider' : 'Customer')}</p>
         <p class="convo-preview">${c.lastSender === 'admin' ? 'You: ' : ''}${c.lastMessage}</p>
       </div>
       ${c.unreadCount > 0 ? `<span class="tab-count" style="position:static;">${c.unreadCount}</span>` : ''}
@@ -103,7 +162,7 @@ function renderConvoList() {
 
 async function openConversation(userId) {
   activeUserId = userId;
-  history.replaceState(null, '', `support.html?userId=${userId}`);
+  history.replaceState(null, '', `support.html?audience=${activeAudience}&userId=${userId}`);
   renderConvoList();
 
   document.getElementById('thread-input-bar').style.display = 'flex';
@@ -116,7 +175,7 @@ async function openConversation(userId) {
   header.innerHTML = convo ? `
     <div class="convo-avatar">${initials(convo.user.name)}</div>
     <div>
-      <p style="margin:0 0 4px; font-weight:600;">${convo.user.name}</p>
+      <p style="margin:0 0 4px; font-weight:600;">${convo.user.name}${activeAudience === 'supplier' ? ' · Rider' : ''}</p>
       <p class="helper-text" style="margin:0;">${convo.user.phone || convo.user.email || ''}</p>
     </div>
   ` : '';
@@ -146,11 +205,15 @@ async function renderThreadOrderCard() {
   } catch (e) { /* ignore */ }
   if (!order) { wrap.innerHTML = ''; return; }
 
+  const deliveryBadge = order.delivery?.mode === 'CHOWDECK_RELAY'
+    ? `<span class="badge badge-pending" style="margin-left:8px;"><i class="fa-solid fa-motorcycle"></i> Chowdeck Relay</span>`
+    : `<span class="badge badge-approved" style="margin-left:8px;"><i class="fa-solid fa-shop"></i> In-house</span>`;
+
   wrap.innerHTML = `
     <div class="card order-status-card">
       <div class="order-status-thumb"><i class="fa-solid fa-receipt"></i></div>
       <div class="order-status-info">
-        <p class="order-status-title">Order #${order.orderNumber}</p>
+        <p class="order-status-title">Order #${order.orderNumber} ${deliveryBadge}</p>
         <p class="order-status-sub">${order.items.map((i) => `${i.quantity} × ${i.name}`).join(', ')}</p>
       </div>
       <span class="price" style="font-family:var(--font-mono);">${currency(order.totalAmount)}</span>
@@ -159,10 +222,14 @@ async function renderThreadOrderCard() {
 
 function renderThreadActions() {
   const wrap = document.getElementById('thread-actions-wrap');
+  // "Assign delivery" only makes sense for a customer conversation tied to
+  // an order — a rider's own support thread isn't about assigning anyone.
+  const showAssign = activeAudience === 'customer';
+
   wrap.innerHTML = `
     <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
       <button class="btn btn-primary btn-sm" id="resolve-btn"><i class="fa-solid fa-check"></i> Resolve</button>
-      <button class="btn btn-ghost btn-sm" id="assign-btn"><i class="fa-solid fa-motorcycle"></i> Assign delivery</button>
+      ${showAssign ? `<button class="btn btn-ghost btn-sm" id="assign-btn"><i class="fa-solid fa-motorcycle"></i> Assign delivery</button>` : ''}
       <button class="btn btn-ghost btn-sm" id="more-btn"><i class="fa-solid fa-ellipsis"></i> More</button>
     </div>`;
 
@@ -174,11 +241,13 @@ function renderThreadActions() {
     openConversation(activeUserId);
   });
 
-  document.getElementById('assign-btn').addEventListener('click', assignDeliveryFlow);
+  if (showAssign) {
+    document.getElementById('assign-btn').addEventListener('click', assignDeliveryFlow);
+  }
 
   document.getElementById('more-btn').addEventListener('click', async () => {
     const convo = conversations.find((c) => c.user._id === activeUserId);
-    await UI.alert(`${convo?.user?.email || 'No email on file'}${convo?.user?.phone ? `<br>${convo.user.phone}` : ''}`, { title: 'Customer details' });
+    await UI.alert(`${convo?.user?.email || 'No email on file'}${convo?.user?.phone ? `<br>${convo.user.phone}` : ''}`, { title: activeAudience === 'supplier' ? 'Rider details' : 'Customer details' });
   });
 }
 

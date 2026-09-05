@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Favorites — Mama Tolu's Kitchen</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16120e" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body>
+  <script src="/js/ui.js"></script>
+  <div id="topbar"></div>
+
+  <div class="container" style="padding-top: 12px;">
+    <p class="eyebrow">Saved for later</p>
+    <h1 class="display" style="margin-bottom: 20px;">Your favorites</h1>
+    <div class="grid" id="fav-grid"><p class="helper-text">Loading…</p></div>
+  </div>
+
+  <div id="tabbar"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    async function loadFavorites() {
+      let user;
+      try { user = (await api.get('/auth/me')).user; }
+      catch (e) { window.location.href = 'login.html?next=favorites.html'; return; }
+
+      const favIds = (user.favorites || []).map(String);
+      const grid = document.getElementById('fav-grid');
+
+      if (!favIds.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p class="eyebrow">No favorites yet</p><h2 class="display">Tap the heart on any dish</h2><p class="helper-text">Save your go-to orders here for quick access.</p></div>`;
+        return;
+      }
+
+      const { items } = await api.get('/menu');
+      const favItems = items.filter((i) => favIds.includes(i._id));
+
+      grid.innerHTML = favItems.map((item) => {
+        const priceIncreased = item.previousPrice != null && item.currentPrice > item.previousPrice;
+        return `
+          <a href="item.html?id=${item._id}" class="card item-card rise-in">
+            <div class="thumb">
+              ${item.images?.[0] ? `<img src="${item.images[0]}" alt="">` : `<span class="thumb-placeholder display">${item.name.charAt(0)}</span>`}
+            </div>
+            <div class="item-body">
+              <h3 class="item-name">${item.name}</h3>
+              <div class="item-footer">
+                <div>
+                  <span class="price">${currency(item.currentPrice)}</span>
+                  ${priceIncreased ? `<span class="price-old">${currency(item.previousPrice)}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          </a>`;
+      }).join('');
+    }
+    loadFavorites();
+  </script>
+</body>
+</html>
