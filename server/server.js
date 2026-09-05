@@ -30,6 +30,7 @@ initSocket(server, process.env.CLIENT_URL);
 // --- Custom CORS & Preflight Middleware for Vercel Serverless ---
 app.use((req, res, next) => {
   const allowedOrigins = [
+    'http://localhost:7700',
     'https://rossy-webapp.netlify.app',
     process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/$/, '') : null
   ].filter(Boolean);
