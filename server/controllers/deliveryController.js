@@ -71,7 +71,16 @@ exports.getQuote = async (req, res, next) => {
     res.json({ delivery: result, nearRadiusKm: deliveryConfig.nearRadiusKm });
   } catch (err) {
     if (err.name === 'ChowdeckError') {
-      return res.status(502).json({ message: `Could not get a delivery quote right now: ${err.message}` });
+      // The raw Chowdeck error (e.g. "Vendor not found", a missing API key,
+      // an unreachable API) is a setup/account problem on our side, not
+      // something a customer can act on — showing it to them just looks
+      // broken and leaks internals. Log the real reason for whoever's
+      // running the restaurant to fix, but keep the customer-facing
+      // message generic and reassuring.
+      console.error('[Chowdeck delivery quote failed]', err.message, err.data || '');
+      return res.status(502).json({
+        message: "We couldn't calculate your delivery fee right now.",
+      });
     }
     if (err.message?.includes('coordinates')) {
       return res.status(400).json({ message: err.message });

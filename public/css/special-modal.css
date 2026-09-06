@@ -103,10 +103,13 @@
 /* ---- Image carousel ---- */
 .special-media {
   position: relative;
-  height: 230px;
+  height: 340px;
   border-radius: 28px 28px 0 0;
   overflow: hidden;
   background: linear-gradient(135deg, #2a1d12, #1c1712);
+}
+@media (max-height: 700px) {
+  .special-media { height: 280px; }
 }
 .special-media-track {
   display: flex;
@@ -122,6 +125,7 @@
   scroll-snap-align: center;
   height: 100%;
   position: relative;
+  overflow: hidden; /* clip the Ken Burns zoom so it can't bleed into the next slide */
 }
 .special-media-slide img {
   width: 100%;

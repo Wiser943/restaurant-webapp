@@ -1,0 +1,47 @@
+# Copy this file to .env and fill in your real values.
+
+# --- Core app (already required before this feature set) ---
+MONGO_URI=mongodb://localhost:27017/mama-tolus-kitchen
+JWT_SECRET=change-this-to-a-long-random-string
+NODE_ENV=development
+PORT=5000
+
+# --- Delivery routing: your restaurant's location ---
+# Right-click your spot on Google Maps and copy the lat/lng that pops up.
+RESTAURANT_LAT=6.601838
+RESTAURANT_LNG=3.3514863
+RESTAURANT_ADDRESS="Mama Tolu's Kitchen"
+RESTAURANT_CONTACT_NAME="Mama Tolu's Kitchen"
+RESTAURANT_CONTACT_PHONE=+2348000000000
+
+# How close (km) counts as "in-house, free delivery" before Chowdeck Relay
+# takes over and the customer pays the rider fare.
+NEAR_RADIUS_KM=1.0
+
+# --- ETA calculator (all in minutes) ---
+ETA_KITCHEN_PREP_MIN=20
+ETA_INHOUSE_BUFFER_MIN=10
+ETA_RIDER_PICKUP_WINDOW_MIN=15
+ETA_TRAFFIC_MIN_PER_KM=3.5
+
+# --- Chowdeck API ---
+# From Chowdeck Dashboard -> Settings -> Developers.
+CHOWDECK_API_BASE_URL=https://api.chowdeck.com
+CHOWDECK_API_KEY=
+CHOWDECK_MERCHANT_REFERENCE=
+CHOWDECK_WEBHOOK_SECRET=
+CHOWDECK_COUNTRY_CODE=NG
+CHOWDECK_TIMEOUT_MS=12000
+
+# Marketplace vendor commission tiers (%) — confirm your real rates in
+# Dashboard -> Settings -> Payouts and correct these if they differ.
+CHOWDECK_TIER_BASIC_PCT=15
+CHOWDECK_TIER_PREMIUM_PCT=20
+CHOWDECK_TIER_AGBA_PCT=30
+CHOWDECK_TIER_CHOWSMART_PCT=35
+
+# --- Web Push (background notifications) ---
+# Generate once with: npm run generate-vapid-keys
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@example.com

@@ -77,12 +77,46 @@ function renderExtras() {
     </div>`;
 }
 
+function renderHero() {
+  const wrap = document.getElementById('hero-wrap');
+  const images = (item.images || []).filter(Boolean);
+
+  if (!images.length) {
+    wrap.innerHTML = `<div class="hero-placeholder display">${escapeHtml(item.name.charAt(0))}</div>`;
+    return;
+  }
+
+  if (images.length === 1) {
+    wrap.innerHTML = `<img src="${images[0]}" alt="${escapeHtml(item.name)}">`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="hero-carousel-track" id="hero-track">
+      ${images.map((src) => `<div class="hero-carousel-slide"><img src="${src}" alt="${escapeHtml(item.name)}"></div>`).join('')}
+    </div>
+    <div class="hero-carousel-dots" id="hero-dots">
+      ${images.map((_, i) => `<span class="hero-carousel-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}
+    </div>
+  `;
+
+  const track = document.getElementById('hero-track');
+  track.addEventListener('scroll', () => {
+    const idx = Math.round(track.scrollLeft / track.clientWidth);
+    document.querySelectorAll('#hero-dots .hero-carousel-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function renderItem() {
   const priceIncreased = item.previousPrice != null && item.currentPrice > item.previousPrice;
 
-  document.getElementById('hero-wrap').innerHTML = item.images?.[0]
-    ? `<img src="${item.images[0]}" alt="${item.name}">`
-    : `<div class="hero-placeholder display">${item.name.charAt(0)}</div>`;
+  renderHero();
 
   document.getElementById('item-sheet').innerHTML = `
     <div class="tag-row">
@@ -232,11 +266,6 @@ async function handleAdd() {
   }
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
 function escapeAttr(str) { return escapeHtml(str).replace(/"/g, '&quot;'); }
 function cssEscape(str) { return window.CSS && CSS.escape ? CSS.escape(str) : str.replace(/["\\]/g, '\\$&'); }
 

@@ -724,6 +724,7 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .hero-wrap img {
@@ -731,6 +732,44 @@ img {
   height: 100%;
   object-fit: cover;
 }
+
+.hero-carousel-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.hero-carousel-track::-webkit-scrollbar { display: none; }
+.hero-carousel-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  height: 100%;
+  overflow: hidden;
+}
+.hero-carousel-slide img { width: 100%; height: 100%; object-fit: cover; }
+
+.hero-carousel-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.hero-carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.25s ease;
+}
+.hero-carousel-dot.active { background: var(--orange); width: 18px; border-radius: 4px; }
 
 .hero-placeholder {
   font-size: 70px;

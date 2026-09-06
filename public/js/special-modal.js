@@ -6,22 +6,33 @@
 // ============================================================
 
 const SpecialModal = (() => {
-  const DISMISS_KEY = 'vc_kitchen_special_dismissed_ids';
+  const DISMISS_KEY = 'vc_kitchen_special_dismissed_until';
+  const DISMISS_HOURS = 10;
 
-  function getDismissedIds() {
-    try { return JSON.parse(sessionStorage.getItem(DISMISS_KEY) || '[]'); }
-    catch (e) { return []; }
+  function getDismissMap() {
+    try { return JSON.parse(localStorage.getItem(DISMISS_KEY) || '{}'); }
+    catch (e) { return {}; }
   }
 
-  function markDismissed(id) {
-    const ids = getDismissedIds();
-    if (!ids.includes(id)) ids.push(id);
-    try { sessionStorage.setItem(DISMISS_KEY, JSON.stringify(ids)); } catch (e) { /* ignore */ }
+  // Persists a suppression for this item for DISMISS_HOURS — survives page
+  // reloads and new sessions, but naturally expires so the popup can come
+  // back later. Only "Not now" (and successfully adding to cart) call this;
+  // the X button and a backdrop tap do NOT, so the popup reappears on the
+  // very next visit/reload in that case.
+  function dismissForHours(id, hours = DISMISS_HOURS) {
+    const map = getDismissMap();
+    map[id] = Date.now() + hours * 60 * 60 * 1000;
+    try { localStorage.setItem(DISMISS_KEY, JSON.stringify(map)); } catch (e) { /* ignore */ }
+  }
+
+  function isDismissed(id) {
+    const map = getDismissMap();
+    const until = map[id];
+    return typeof until === 'number' && Date.now() < until;
   }
 
   function maybeShow(items) {
-    const dismissed = getDismissedIds();
-    const special = (items || []).find((i) => i.isSpecial && i.isAvailable && !dismissed.includes(i._id));
+    const special = (items || []).find((i) => i.isSpecial && i.isAvailable && !isDismissed(i._id));
     if (!special) return;
     // Small delay so it appears after the dashboard has settled in, not
     // the instant the page paints.
@@ -41,10 +52,16 @@ const SpecialModal = (() => {
     overlay.innerHTML = cardMarkup(item, false);
     document.body.appendChild(overlay);
 
-    function close() {
-      markDismissed(item._id);
+    // X / backdrop: closes for now, but doesn't suppress future visits.
+    function closeSilently() {
       overlay.classList.add('closing');
       setTimeout(() => overlay.remove(), 230);
+    }
+
+    // "Not now" / successful add-to-cart: suppress this item for 10 hours.
+    function dismiss() {
+      dismissForHours(item._id);
+      closeSilently();
     }
 
     function rerender(expanded) {
@@ -53,8 +70,9 @@ const SpecialModal = (() => {
     }
 
     function bind(expanded) {
-      overlay.querySelector('.special-close')?.addEventListener('click', close);
-      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); }, { once: true });
+      overlay.querySelector('.special-close')?.addEventListener('click', closeSilently);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSilently(); }, { once: true });
+      overlay.querySelector('.special-maybe-later')?.addEventListener('click', dismiss);
 
       const track = overlay.querySelector('.special-media-track');
       if (track) {
@@ -100,7 +118,7 @@ const SpecialModal = (() => {
           await api.post('/cart', { menuItemId: item._id, quantity, extras });
           UI.toast(`${item.name} added to your cart`, { type: 'success' });
           if (typeof renderNav === 'function') renderNav();
-          close();
+          dismiss();
         } catch (err) {
           UI.toast(err.message || 'Could not add this item.', { type: 'danger' });
           btn.disabled = false;
@@ -158,7 +176,7 @@ const SpecialModal = (() => {
         ${item.previousPrice != null && item.currentPrice < item.previousPrice ? `<span class="helper-text" style="text-decoration:line-through;">${currencyLocal(item.previousPrice)}</span>` : ''}
       </div>
       <div class="special-actions">
-        <button class="btn btn-ghost btn-block special-maybe-later" onclick="this.closest('.special-overlay').querySelector('.special-close').click()">Not now</button>
+        <button class="btn btn-ghost btn-block special-maybe-later">Not now</button>
         <button class="btn btn-primary btn-block view-details-btn">View Details</button>
       </div>
     `;

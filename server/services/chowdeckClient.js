@@ -5,9 +5,15 @@
 // https://chowdeck-api.readme.io. Endpoint paths, field names, and the
 // webhook signature scheme below match that documentation as of this
 // writing. Chowdeck's API can change, and some accounts may have extra
-// requirements (e.g. a merchantReference on certain routes) — double check
-// against your own Dashboard -> API Reference before going live, and watch
-// your error logs for 400s the first few times you hit these endpoints.
+// requirements — double check against your own Dashboard -> API Reference
+// before going live, and watch your error logs for 400s the first few
+// times you hit these endpoints.
+//
+// NOTE: `merchant_reference` (from CHOWDECK_MERCHANT_REFERENCE) is now sent
+// on both /relay/delivery/fee and /relay/delivery. A "Vendor not found"
+// error from Chowdeck almost always means either that value is missing/
+// wrong, or the API key itself isn't tied to an approved vendor account on
+// their side — see the troubleshooting note in deliveryConfig.js.
 
 const crypto = require('crypto');
 const deliveryConfig = require('../config/deliveryConfig');
@@ -87,6 +93,9 @@ async function getRelayQuote({ source, destination, estimatedOrderAmount = 0 }) 
       destination_address: { latitude: destination.lat, longitude: destination.lng },
       // Chowdeck expects amounts in kobo (the smallest NGN unit) - Naira × 100.
       estimated_order_amount: Math.round(estimatedOrderAmount * 100),
+      ...(deliveryConfig.chowdeck.merchantReference
+        ? { merchant_reference: deliveryConfig.chowdeck.merchantReference }
+        : {}),
     },
   });
 
@@ -122,6 +131,9 @@ async function createDelivery({
       user_action: 'sending',
       estimated_order_amount: estimatedOrderAmount != null ? Math.round(estimatedOrderAmount * 100) : undefined,
       customer_delivery_note: customerDeliveryNote,
+      ...(deliveryConfig.chowdeck.merchantReference
+        ? { merchant_reference: deliveryConfig.chowdeck.merchantReference }
+        : {}),
       source_contact: {
         name: deliveryConfig.restaurant.contactName,
         phone: deliveryConfig.restaurant.contactPhone,

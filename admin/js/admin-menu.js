@@ -103,8 +103,8 @@ function openForm(item) {
       <div class="field"><label>Description</label><textarea id="f-desc" rows="2">${item?.description || ''}</textarea></div>
       <div class="field"><label>Price (₦)</label><input id="f-price" type="number" value="${item?.currentPrice || ''}" /></div>
       <div class="field">
-        <label>Image URLs (optional — one per line, or comma-separated. First one is the main photo.)</label>
-        <textarea id="f-images" rows="2" placeholder="https://...\nhttps://...">${(item?.images || []).join('\n')}</textarea>
+        <label>Image URLs (optional — separate with a comma or a new line. First one is the main photo, shown in a swipeable gallery if there's more than one.)</label>
+        <textarea id="f-images" rows="2" placeholder="https://img1.jpg, https://img2.jpg">${(item?.images || []).join('\n')}</textarea>
       </div>
       <div class="field">
         <label><input type="checkbox" id="f-always" ${item?.isAlwaysOnMenu !== false ? 'checked' : ''} /> Always on the menu</label>
