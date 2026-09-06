@@ -116,8 +116,8 @@ exports.getAddresses = async (req, res, next) => {
 exports.addAddress = async (req, res, next) => {
   try {
     const { label, address, isDefault } = req.body;
-    if (!address || address.trim().split(/\s+/).filter(Boolean).length < 10) {
-      return res.status(400).json({ message: 'Please enter a full address of at least 10 words.' });
+    if (!address || address.trim().split(/\s+/).filter(Boolean).length < 4) {
+      return res.status(400).json({ message: 'Please enter a full address of at least 5 words.' });
     }
     const user = await User.findById(req.user._id);
     if (isDefault) user.addresses.forEach((a) => { a.isDefault = false; });

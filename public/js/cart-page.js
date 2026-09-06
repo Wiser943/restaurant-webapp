@@ -62,7 +62,6 @@ function renderCart() {
                     ${line.extras.map((ex) => `<span class="cart-extra-chip">+ ${ex.quantity} × ${escapeHtml(ex.name)}</span>`).join('')}
                   </div>` : ''}
               </div>
-              <button class="cart-card-remove remove-btn" aria-label="Remove item"><i class="fa-solid fa-trash-can"></i></button>
             </div>
             <div class="cart-card-footer">
               <div class="qty-control">
