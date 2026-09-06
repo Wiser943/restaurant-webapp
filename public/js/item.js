@@ -127,10 +127,12 @@ function formatDescriptionHtml(text) {
 
 function renderDescription(text) {
   const isLong = text.length > 220;
-  const id = 'item-description';
+  if (!isLong) {
+    return `<div class="description">${formatDescriptionHtml(text)}</div>`;
+  }
   return `
-    <div class="description ${isLong ? 'collapsed' : ''}" id="${id}">${formatDescriptionHtml(text)}</div>
-    ${isLong ? `<button type="button" class="description-toggle" id="description-toggle-btn">Read more <i class="fa-solid fa-chevron-down"></i></button>` : ''}
+    <div class="description description-clamped" id="item-description">${escapeHtml(text.replace(/\s+/g, ' ').trim())}</div>
+    <button type="button" class="description-toggle" id="description-toggle-btn" data-expanded="false">Read more <i class="fa-solid fa-chevron-down"></i></button>
   `;
 }
 
@@ -139,10 +141,18 @@ function bindDescriptionToggle() {
   if (!btn) return;
   btn.addEventListener('click', () => {
     const desc = document.getElementById('item-description');
-    const collapsed = desc.classList.toggle('collapsed');
-    btn.innerHTML = collapsed
-      ? 'Read more <i class="fa-solid fa-chevron-down"></i>'
-      : 'Read less <i class="fa-solid fa-chevron-up"></i>';
+    const expanded = btn.dataset.expanded === 'true';
+    if (expanded) {
+      desc.className = 'description description-clamped';
+      desc.textContent = item.description.replace(/\s+/g, ' ').trim();
+      btn.innerHTML = 'Read more <i class="fa-solid fa-chevron-down"></i>';
+      btn.dataset.expanded = 'false';
+    } else {
+      desc.className = 'description';
+      desc.innerHTML = formatDescriptionHtml(item.description);
+      btn.innerHTML = 'Read less <i class="fa-solid fa-chevron-up"></i>';
+      btn.dataset.expanded = 'true';
+    }
   });
 }
 
