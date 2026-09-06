@@ -42,7 +42,6 @@ async function renderNav() {
     topbarEl.innerHTML = `
       <a href="index.html" class="brand-name display">VC Kitchen</a>
       <div class="topbar-actions">
-        ${user ? '<a href="support.html" class="btn btn-ghost btn-sm">Support</a>' : ''}
         ${user?.role === 'admin' ? '<a href="/admin" class="btn btn-ghost btn-sm">Admin</a>' : ''}
         ${user ? '' : '<a href="login.html" class="btn btn-primary btn-sm">Log in</a>'}
       </div>

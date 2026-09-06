@@ -24,22 +24,18 @@ function renderAdminNav(user) {
     { href: 'users.html', label: 'Users' },
     { href: 'support.html', label: 'Support' },
     { href: 'settings.html', label: 'Settings' },
+    { href: 'index.html', label: 'View site' },
+
   ];
   el.innerHTML = `
     <div class="topbar">
       <a href="index.html" class="brand-name display">Admin · VC Kitchen</a>
       <div class="topbar-actions">
-        <a href="/index.html" class="btn btn-ghost btn-sm">View site</a>
         <a href="profile.html" class="profile-icon-btn" style="width:36px;height:36px;" aria-label="Admin profile"><i class="fa-solid fa-user"></i></a>
-        <button id="admin-logout" class="btn btn-ghost btn-sm">Log out</button>
       </div>
     </div>
     <nav class="admin-nav">
       ${links.map((l) => `<a href="${l.href}" class="${page === l.href ? 'active' : ''}">${l.label}</a>`).join('')}
     </nav>
   `;
-  document.getElementById('admin-logout').addEventListener('click', async () => {
-    await api.post('/auth/logout', {});
-    window.location.href = '/index.html';
-  });
 }
