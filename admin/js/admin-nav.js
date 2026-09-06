@@ -21,9 +21,7 @@ function renderAdminNav(user) {
   const links = [
     { href: 'index.html', label: 'Orders' },
     { href: 'menu.html', label: 'Menu' },
-    { href: 'users.html', label: 'Users' },
     { href: 'support.html', label: 'Support' },
-    { href: 'settings.html', label: 'Settings' },
     { href: 'index.html', label: 'View site' },
 
   ];
