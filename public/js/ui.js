@@ -42,7 +42,7 @@ const UI = (() => {
     return overlay;
   }
 
-  function open({ title, message, kind, buttons, withInput = false, inputValue = '' }) {
+  function open({ title, message, kind, buttons, withInput = false, inputValue = '', inputType = 'text' } = {}) {
     return new Promise((resolve) => {
       const overlay = buildModal({ title, message, kind, buttons });
       const actions = overlay.querySelector('.ui-modal-actions');
@@ -52,6 +52,7 @@ const UI = (() => {
       if (withInput) {
         inputWrap.style.display = 'block';
         input.value = inputValue;
+        input.type = inputType;
       }
 
       function close(result) {
@@ -101,13 +102,14 @@ const UI = (() => {
       });
     },
 
-    prompt(message, { title = 'One more thing', defaultValue = '', confirmText = 'Save' } = {}) {
+    prompt(message, { title = 'One more thing', defaultValue = '', confirmText = 'Save', inputType = 'text' } = {}) {
       return open({
         title,
         message,
         kind: 'question',
         withInput: true,
         inputValue: defaultValue,
+        inputType,
         buttons: [
           { label: 'Cancel', value: null, variant: 'ghost', dismissible: true },
           { label: confirmText, variant: 'primary' },

@@ -3,7 +3,7 @@
 // "Install app" prompt. It caches the basic shell so the app opens
 // instantly even on a slow connection (menu data still loads live).
 
-const CACHE_NAME = 'mama-rose-shell-v1';
+const CACHE_NAME = 'vc-kitchen-shell-v1';
 const SHELL_FILES = [
   '/index.html',
   '/css/style.css',
@@ -45,7 +45,7 @@ self.addEventListener('fetch', (event) => {
 // device itself. The payload shape ({ title, body, url, tag }) is set by
 // server/utils/sendPush.js.
 self.addEventListener('push', (event) => {
-  let data = { title: "Mama Tolu's Kitchen", body: 'You have a new notification.' };
+  let data = { title: "VC Kitchen", body: 'You have a new notification.' };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) { /* fall back to the default above */ }

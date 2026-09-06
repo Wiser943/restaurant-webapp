@@ -8,6 +8,15 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['customer', 'admin', 'supplier'], default: 'customer' },
+    isActive: { type: Boolean, default: true },
+    avatarUrl: { type: String, default: '' },
+    addresses: [
+      {
+        label: { type: String, trim: true, default: 'Home' },
+        address: { type: String, trim: true, required: true },
+        isDefault: { type: Boolean, default: false },
+      },
+    ],
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' }],
   },
   { timestamps: true }

@@ -9,6 +9,7 @@ const TABS = [
   { href: 'orders.html', label: 'Orders', match: ['orders.html'] },
   { href: 'cart.html', label: 'Cart', match: ['cart.html'] },
   { href: 'favorites.html', label: 'Favorite', match: ['favorites.html'] },
+  { href: 'account.html', label: 'Profile', match: ['account.html'] },
 ];
 
 function currentPage() {
@@ -39,13 +40,11 @@ async function renderNav() {
 
   if (topbarEl) {
     topbarEl.innerHTML = `
-      <a href="index.html" class="brand-name display">Mama Tolu's Kitchen</a>
+      <a href="index.html" class="brand-name display">VC Kitchen</a>
       <div class="topbar-actions">
         ${user ? '<a href="support.html" class="btn btn-ghost btn-sm">Support</a>' : ''}
         ${user?.role === 'admin' ? '<a href="/admin" class="btn btn-ghost btn-sm">Admin</a>' : ''}
-        ${user
-          ? `<a href="account.html" class="btn btn-ghost btn-sm">${user.name.split(' ')[0]}</a>`
-          : '<a href="login.html" class="btn btn-primary btn-sm">Log in</a>'}
+        ${user ? '' : '<a href="login.html" class="btn btn-primary btn-sm">Log in</a>'}
       </div>
     `;
     topbarEl.className = 'topbar';
@@ -74,6 +73,7 @@ function tabIcon(label, active) {
     Orders: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="2" stroke="${c}" stroke-width="2"/><path d="M9 8h6M9 12h6M9 16h3" stroke="${c}" stroke-width="2" stroke-linecap="round"/></svg>`,
     Cart: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 4h2l2.2 11.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L20 8H6" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="20.5" r="1.4" fill="${c}"/><circle cx="17.5" cy="20.5" r="1.4" fill="${c}"/></svg>`,
     Favorite: `<svg width="20" height="20" viewBox="0 0 24 24" fill="${active ? c : 'none'}"><path d="M12 20s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z" stroke="${c}" stroke-width="2" stroke-linejoin="round"/></svg>`,
+    Profile: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="${c}" stroke-width="2"/><path d="M4.5 20c1.4-3.6 4.4-5.6 7.5-5.6s6.1 2 7.5 5.6" stroke="${c}" stroke-width="2" stroke-linecap="round"/></svg>`,
   };
   return icons[label] || '';
 }

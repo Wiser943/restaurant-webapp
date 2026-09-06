@@ -74,8 +74,10 @@ function renderCheckout() {
     </div>
 
     <div class="field">
-      <label for="address">Delivery / pickup details</label>
-      <textarea id="address" rows="2" placeholder="Address, or 'Pickup' if collecting in person"></textarea>
+      <label for="address">Delivery address <span class="error-text" style="font-size:12px;">*required</span></label>
+      <textarea id="address" rows="3" placeholder="e.g. House 12, Block C, Off Marina Road, near the blue gate, Calabar, Cross River State" required></textarea>
+      <span class="helper-text">Please write a full address (street, house/landmark, area, city) — at least 10 words — so the rider can actually find you.</span>
+      <span class="error-text" id="address-error" style="display:none;"></span>
     </div>
 
     <div class="field">
@@ -118,6 +120,41 @@ function renderCheckout() {
   }
 
   document.getElementById('submit-btn').addEventListener('click', placeOrder);
+
+  const addressEl = document.getElementById('address');
+  addressEl.addEventListener('blur', () => validateAddress(addressEl.value, { showOk: false }));
+  addressEl.addEventListener('input', () => {
+    const err = document.getElementById('address-error');
+    if (err.style.display !== 'none') validateAddress(addressEl.value, { showOk: false });
+  });
+}
+
+const MIN_ADDRESS_WORDS = 10;
+
+// Returns the trimmed, validated address string, or null (and shows an
+// inline error) if it doesn't look like a real, full address yet.
+function validateAddress(raw, { showOk = true } = {}) {
+  const value = (raw || '').trim();
+  const errorEl = document.getElementById('address-error');
+  const wordCount = value.length ? value.split(/\s+/).filter(Boolean).length : 0;
+
+  let message = '';
+  if (!value) {
+    message = 'Delivery address is required.';
+  } else if (wordCount < MIN_ADDRESS_WORDS) {
+    message = `Please add a bit more detail — at least ${MIN_ADDRESS_WORDS} words (street, house/landmark, area, city). ${wordCount}/${MIN_ADDRESS_WORDS} so far.`;
+  }
+
+  if (message) {
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+    document.getElementById('address').classList.add('input-invalid');
+    return null;
+  }
+
+  errorEl.style.display = 'none';
+  document.getElementById('address').classList.remove('input-invalid');
+  return value;
 }
 
 function foodSubtotal() {
@@ -206,12 +243,20 @@ async function placeOrder() {
   const btn = document.getElementById('submit-btn');
   const errorText = document.getElementById('error-text');
   errorText.style.display = 'none';
+
+  const address = validateAddress(document.getElementById('address').value);
+  if (!address) {
+    document.getElementById('address').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('address').focus();
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Submitting order…';
 
   try {
     const data = await api.post('/orders', {
-      deliveryAddress: document.getElementById('address').value,
+      deliveryAddress: address,
       paymentReference: document.getElementById('note').value,
       paymentMethod: 'bank_transfer',
       notes: document.getElementById('description').value,

@@ -41,6 +41,7 @@ async function loadHome() {
   renderCategories();
   renderBanners();
   renderGrid();
+  if (typeof SpecialModal !== 'undefined') SpecialModal.maybeShow(allItems);
 }
 
 function renderCategories() {
@@ -168,7 +169,7 @@ document.getElementById('search-input').addEventListener('input', renderGrid);
 
 // Real-time updates - the socket connects to the same address the page was loaded from
 const socket = io();
-socket.on('menu:created', (item) => { upsertItem(item); });
+socket.on('menu:created', (item) => { upsertItem(item); if (item.isSpecial && item.isAvailable) SpecialModal.maybeShow([item]); });
 socket.on('menu:updated', (item) => { upsertItem(item); });
 socket.on('menu:deleted', ({ id }) => { allItems = allItems.filter((i) => i._id !== id); renderGrid(); });
 socket.on('banner:updated', (banner) => {

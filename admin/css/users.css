@@ -1,0 +1,246 @@
+/* Admin · Users Management — stat cards + searchable table, responsive */
+
+.users-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+/* ---- Stat cards ---- */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (max-width: 900px) {
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .stat-cards { grid-template-columns: 1fr; }
+}
+
+.stat-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.stat-icon.orange { background: rgba(255, 138, 61, 0.18); color: var(--orange); }
+.stat-icon.sage   { background: rgba(143, 170, 124, 0.18); color: var(--sage); }
+.stat-icon.blue   { background: rgba(90, 150, 224, 0.18); color: #5a96e0; }
+.stat-icon.violet { background: rgba(170, 124, 224, 0.18); color: #b98cf0; }
+
+.stat-label { color: var(--ink-muted); font-size: 12.5px; }
+.stat-value { font-family: var(--font-display); font-size: 26px; font-weight: 700; }
+.stat-trend { font-size: 12px; color: var(--sage); }
+.stat-trend.down { color: var(--red); }
+
+/* ---- Toolbar ---- */
+.users-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.search-field {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  color: var(--ink-faint);
+}
+.search-field input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-size: 14px;
+  width: 100%;
+}
+
+.toolbar-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.toolbar-filters .field,
+#sort-select {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--ink);
+  margin-bottom: 0;
+}
+
+/* ---- Table card ---- */
+.users-table-card { padding: 0; overflow: hidden; }
+.users-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+table.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.users-table th {
+  text-align: left;
+  padding: 12px 18px;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--glass-border);
+  white-space: nowrap;
+}
+.users-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--glass-border);
+  vertical-align: middle;
+}
+.users-table tr:last-child td { border-bottom: none; }
+.users-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+.user-cell { display: flex; align-items: center; gap: 10px; }
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--orange), var(--orange-2));
+  color: #1b1108;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.user-name { font-weight: 600; }
+.user-id { font-size: 11.5px; color: var(--ink-faint); font-family: var(--font-mono); }
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.role-badge.customer { background: rgba(90, 150, 224, 0.15); color: #7fb1ee; }
+.role-badge.supplier { background: rgba(170, 124, 224, 0.15); color: #c7a3f5; }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.status-pill.active { background: rgba(143, 170, 124, 0.18); color: var(--sage); }
+.status-pill.inactive { background: rgba(224, 90, 90, 0.15); color: var(--red); }
+.status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.row-actions-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--ink-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ---- Pagination ---- */
+.users-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px;
+  flex-wrap: wrap;
+}
+.users-pagination .page-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.users-pagination button {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--ink);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.users-pagination button.active {
+  background: var(--orange);
+  color: #1b1108;
+  border-color: var(--orange);
+  font-weight: 700;
+}
+.users-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- Responsive: collapse table into stacked cards on narrow screens ---- */
+@media (max-width: 720px) {
+  .users-table thead { display: none; }
+  .users-table, .users-table tbody, .users-table tr, .users-table td { display: block; width: 100%; }
+  .users-table tr {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--glass-border);
+  }
+  .users-table td {
+    border: none;
+    padding: 4px 0;
+  }
+  .users-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  .users-table td.user-cell-td { padding-bottom: 8px; }
+  .users-table td.user-cell-td::before { display: none; }
+}

@@ -26,6 +26,7 @@ function renderSupplierNav(user) {
     <div class="topbar">
       <span class="brand-name display"><i class="fa-solid fa-motorcycle"></i> Rider · ${user.name.split(' ')[0]}</span>
       <div class="topbar-actions">
+        <a href="profile.html" class="profile-icon-btn" style="width:36px;height:36px;" aria-label="My profile"><i class="fa-solid fa-user"></i></a>
         <button id="supplier-logout" class="btn btn-ghost btn-sm">Log out</button>
       </div>
     </div>

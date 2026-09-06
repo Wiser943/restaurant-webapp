@@ -64,3 +64,79 @@ exports.logout = (req, res) => {
 exports.getMe = async (req, res) => {
   res.json({ user: req.user });
 };
+
+// PATCH /api/auth/profile  { name?, phone?, avatarUrl? }
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, avatarUrl } = req.body;
+    const user = await User.findById(req.user._id);
+    if (name !== undefined) user.name = name.trim();
+    if (phone !== undefined) user.phone = phone.trim();
+    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl.trim();
+    await user.save();
+    res.json({ user: await User.findById(user._id).select('-passwordHash') });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PATCH /api/auth/password  { currentPassword, newPassword }
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current and new password are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters.' });
+    }
+    const user = await User.findById(req.user._id);
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+    }
+    user.passwordHash = await User.hashPassword(newPassword);
+    await user.save();
+    res.json({ message: 'Password updated.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/auth/addresses
+exports.getAddresses = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select('addresses');
+    res.json({ addresses: user.addresses });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/auth/addresses  { label, address, isDefault }
+exports.addAddress = async (req, res, next) => {
+  try {
+    const { label, address, isDefault } = req.body;
+    if (!address || address.trim().split(/\s+/).filter(Boolean).length < 10) {
+      return res.status(400).json({ message: 'Please enter a full address of at least 10 words.' });
+    }
+    const user = await User.findById(req.user._id);
+    if (isDefault) user.addresses.forEach((a) => { a.isDefault = false; });
+    user.addresses.push({ label: label || 'Home', address: address.trim(), isDefault: Boolean(isDefault) || user.addresses.length === 0 });
+    await user.save();
+    res.status(201).json({ addresses: user.addresses });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// DELETE /api/auth/addresses/:addressId
+exports.deleteAddress = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    user.addresses = user.addresses.filter((a) => String(a._id) !== req.params.addressId);
+    await user.save();
+    res.json({ addresses: user.addresses });
+  } catch (err) {
+    next(err);
+  }
+};

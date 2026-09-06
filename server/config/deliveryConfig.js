@@ -16,8 +16,8 @@ const deliveryConfig = {
   restaurant: {
     latitude: num(process.env.RESTAURANT_LAT, 6.601838),
     longitude: num(process.env.RESTAURANT_LNG, 3.3514863),
-    address: process.env.RESTAURANT_ADDRESS || "Mama Tolu's Kitchen",
-    contactName: process.env.RESTAURANT_CONTACT_NAME || "Mama Tolu's Kitchen",
+    address: process.env.RESTAURANT_ADDRESS || "VC Kitchen",
+    contactName: process.env.RESTAURANT_CONTACT_NAME || "VC Kitchen",
     contactPhone: process.env.RESTAURANT_CONTACT_PHONE || '',
   },
 

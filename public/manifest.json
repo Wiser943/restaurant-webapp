@@ -1,6 +1,6 @@
 {
-  "name": "Mama Rose Kitchen",
-  "short_name": "Mama Rose",
+  "name": "VC Kitchen",
+  "short_name": "VC Kitchen",
   "description": "Order food, see what's ready right now, and track your order.",
   "start_url": "/index.html",
   "display": "standalone",

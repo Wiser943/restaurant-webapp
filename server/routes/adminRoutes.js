@@ -12,6 +12,8 @@ const {
   assignSupplier,
   dispatchOrder,
   getMarketplacePayout,
+  getUsersOverview,
+  setUserStatus,
 } = require('../controllers/adminController');
 const { createBanner, updateBanner, deleteBanner } = require('../controllers/bannerController');
 const { updatePaymentInfo } = require('../controllers/paymentInfoController');
@@ -32,6 +34,10 @@ router.patch('/orders/:id/status', updateOrderStatus);
 router.patch('/orders/:id/adjust-price', adjustOrderPrice);
 router.patch('/orders/:id/assign', assignSupplier);
 router.patch('/orders/:id/dispatch', dispatchOrder);
+
+// Users Management page — customers + suppliers, searchable/paginated
+router.get('/users', getUsersOverview);
+router.patch('/users/:id/status', setUserStatus);
 
 // Delivery staff (supplier) accounts
 router.get('/suppliers', getSuppliers);

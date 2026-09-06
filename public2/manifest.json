@@ -1,0 +1,13 @@
+{
+  "name": "Mama Rose Kitchen",
+  "short_name": "Mama Rose",
+  "description": "Order food, see what's ready right now, and track your order.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#16120e",
+  "theme_color": "#16120e",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

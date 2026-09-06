@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Item — Mama Tolu's Kitchen</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16120e" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body>
+  <script src="/js/ui.js"></script>
+  <div class="detail-page">
+    <button class="icon-btn back-btn glass-circle" onclick="history.back()" aria-label="Go back">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#f6efe4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="icon-btn fav-btn-detail glass-circle" id="fav-btn" aria-label="Toggle favorite">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" id="fav-icon"><path d="M12 20s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9Z" stroke="#f6efe4" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
+
+    <div class="hero-wrap" id="hero-wrap"></div>
+
+    <div class="sheet glass-strong rise-in" id="item-sheet">
+      <p class="helper-text">Loading…</p>
+    </div>
+
+    <div class="add-bar glass-strong">
+      <button class="btn btn-primary btn-block" id="add-btn" disabled>Loading…</button>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/item.js"></script>
+</body>
+</html>

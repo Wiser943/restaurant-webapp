@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Support · Rider — Mama Tolu's Kitchen</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 24px;">
+  <script src="/js/ui.js"></script>
+  <div id="supplier-nav"></div>
+
+  <div class="container" style="padding-top: 12px; max-width: 720px;">
+    <h1 class="display" style="margin: 0 0 12px;">Support</h1>
+    <p class="helper-text" style="margin: -6px 0 14px;">Message the restaurant directly — payouts, account issues, anything not tied to a single delivery.</p>
+
+    <div class="card chat-page" style="padding:10px;">
+      <div id="chat-scroll" class="chat-scroll"><p class="helper-text">Loading…</p></div>
+      <div class="chat-input-bar">
+        <textarea id="chat-input" rows="1" placeholder="Type your message…"></textarea>
+        <button class="btn btn-primary btn-icon" id="chat-send" aria-label="Send">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+      <p class="error-text" id="chat-error" style="display:none; margin: 0 8px 8px;"></p>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/push.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="./js/supplier-nav.js"></script>
+  <script src="./js/supplier-support.js"></script>
+</body>
+</html>

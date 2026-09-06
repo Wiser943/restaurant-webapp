@@ -157,6 +157,129 @@ exports.updateOrderStatus = async (req, res, next) => {
   }
 };
 
+// GET /api/admin/users?role=&search=&status=&page=&limit=&sort=
+// Powers the admin "Users Management" page: stat cards + a searchable,
+// paginated table covering BOTH customers and suppliers (role tells them apart).
+exports.getUsersOverview = async (req, res, next) => {
+  try {
+    const { role, search, status, page = 1, limit = 10, sort = 'newest' } = req.query;
+
+    const filter = { role: { $ne: 'admin' } }; // admins aren't "users" for this table
+    if (role && ['customer', 'supplier'].includes(role)) filter.role = role;
+    if (status === 'active') filter.isActive = true;
+    if (status === 'inactive') filter.isActive = false;
+    if (search && search.trim()) {
+      const re = { $regex: search.trim(), $options: 'i' };
+      filter.$or = [{ name: re }, { email: re }, { phone: re }];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+
+    const sortMap = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      name: { name: 1 },
+    };
+
+    const [totalMatching, users] = await Promise.all([
+      User.countDocuments(filter),
+      User.find(filter)
+        .select('name email phone role isActive createdAt')
+        .sort(sortMap[sort] || sortMap.newest)
+        .skip((pageNum - 1) * pageSize)
+        .limit(pageSize),
+    ]);
+
+    // Per-user order count + total spent, computed in one aggregation pass
+    // rather than N queries. Only meaningful for customers, but harmless
+    // (and always 0) for suppliers.
+    const userIds = users.map((u) => u._id);
+    const orderStats = await Order.aggregate([
+      { $match: { user: { $in: userIds } } },
+      {
+        $group: {
+          _id: '$user',
+          totalOrders: { $sum: 1 },
+          totalSpent: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'approved'] }, '$totalAmount', 0] },
+          },
+        },
+      },
+    ]);
+    const statsByUser = new Map(orderStats.map((s) => [String(s._id), s]));
+
+    const rows = users.map((u) => {
+      const stats = statsByUser.get(String(u._id));
+      return {
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone || '',
+        role: u.role,
+        isActive: u.isActive !== false,
+        createdAt: u.createdAt,
+        totalOrders: stats?.totalOrders || 0,
+        totalSpent: stats?.totalSpent || 0,
+      };
+    });
+
+    // Site-wide stat cards (independent of the current search/filter/page).
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const [totalCustomers, totalSuppliers, newThisMonth, newLastMonth, totalOrdersAllTime] = await Promise.all([
+      User.countDocuments({ role: 'customer' }),
+      User.countDocuments({ role: 'supplier' }),
+      User.countDocuments({ role: { $ne: 'admin' }, createdAt: { $gte: startOfMonth } }),
+      User.countDocuments({ role: { $ne: 'admin' }, createdAt: { $gte: startOfLastMonth, $lt: startOfMonth } }),
+      Order.countDocuments({}),
+    ]);
+
+    const growth = (current, previous) => {
+      if (!previous) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 1000) / 10;
+    };
+
+    res.json({
+      stats: {
+        totalUsers: totalCustomers + totalSuppliers,
+        totalCustomers,
+        totalSuppliers,
+        newThisMonth,
+        newThisMonthGrowthPct: growth(newThisMonth, newLastMonth),
+        totalOrders: totalOrdersAllTime,
+        averageOrdersPerUser: totalCustomers ? Math.round((totalOrdersAllTime / totalCustomers) * 100) / 100 : 0,
+      },
+      users: rows,
+      pagination: {
+        page: pageNum,
+        limit: pageSize,
+        total: totalMatching,
+        totalPages: Math.max(1, Math.ceil(totalMatching / pageSize)),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PATCH /api/admin/users/:id/status  { isActive }
+exports.setUserStatus = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    if (user.role === 'admin') return res.status(400).json({ message: 'Cannot change status of an admin account.' });
+
+    user.isActive = Boolean(req.body.isActive);
+    await user.save();
+    res.json({ user: { _id: user._id, isActive: user.isActive } });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /api/admin/suppliers - delivery staff accounts, for the assignment dropdown
 exports.getSuppliers = async (req, res, next) => {
   try {

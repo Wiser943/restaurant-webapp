@@ -1,0 +1,282 @@
+/* ============================================================
+   "Chef's Special" persuasive popup — shown on the dashboard when an
+   admin-flagged special item is available. Sessions-scoped dismissal
+   lives in special-modal.js.
+   ============================================================ */
+
+.special-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 138, 61, 0.16), rgba(10, 8, 6, 0.82) 70%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  animation: specialFadeIn 0.35s ease forwards;
+  padding: 0;
+}
+@media (min-width: 640px) {
+  .special-overlay { align-items: center; padding: 20px; }
+}
+
+.special-overlay.closing { animation: specialFadeOut 0.22s ease forwards; }
+
+@keyframes specialFadeIn { to { opacity: 1; } }
+@keyframes specialFadeOut { to { opacity: 0; } }
+
+.special-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  border: 1px solid var(--glass-border-strong);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -20px 60px -15px rgba(255, 106, 26, 0.35), 0 0 0 1px rgba(255, 138, 61, 0.08);
+  transform: translateY(60px) scale(0.94);
+  opacity: 0;
+  animation: specialPopIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.05s forwards;
+}
+@media (min-width: 640px) {
+  .special-card { border-radius: 28px; }
+}
+.special-overlay.closing .special-card { animation: specialPopOut 0.2s ease forwards; }
+
+@keyframes specialPopIn {
+  0% { transform: translateY(60px) scale(0.92); opacity: 0; }
+  60% { transform: translateY(-6px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes specialPopOut {
+  to { transform: translateY(40px) scale(0.95); opacity: 0; }
+}
+
+.special-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(10, 8, 6, 0.55);
+  border: 1px solid var(--glass-border-strong);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+.special-close:active { transform: scale(0.9); }
+
+/* ---- Ribbon badge ---- */
+.special-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1b1108;
+  background: linear-gradient(135deg, var(--orange), var(--orange-2));
+  box-shadow: 0 6px 18px -4px rgba(255, 106, 26, 0.7);
+  animation: specialBadgePulse 1.8s ease-in-out infinite;
+}
+@keyframes specialBadgePulse {
+  0%, 100% { box-shadow: 0 6px 18px -4px rgba(255, 106, 26, 0.7); }
+  50% { box-shadow: 0 6px 26px -2px rgba(255, 106, 26, 0.95); }
+}
+
+/* ---- Image carousel ---- */
+.special-media {
+  position: relative;
+  height: 230px;
+  border-radius: 28px 28px 0 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2a1d12, #1c1712);
+}
+.special-media-track {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.special-media-track::-webkit-scrollbar { display: none; }
+.special-media-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  height: 100%;
+  position: relative;
+}
+.special-media-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: specialKenBurns 6s ease-in-out infinite alternate;
+}
+@keyframes specialKenBurns {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+.special-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(15, 11, 8, 0.85) 100%);
+  pointer-events: none;
+}
+
+.special-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.special-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.25s ease;
+}
+.special-dot.active { background: var(--orange); width: 18px; border-radius: 4px; }
+
+/* ---- Steam animation, gives the "fresh out the kitchen" feel ---- */
+.special-steam {
+  position: absolute;
+  bottom: 30%;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+  z-index: 2;
+}
+.steam-wisp {
+  width: 10px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  filter: blur(5px);
+  opacity: 0;
+  animation: steamRise 2.6s ease-in infinite;
+}
+.steam-wisp:nth-child(2) { animation-delay: 0.5s; height: 42px; }
+.steam-wisp:nth-child(3) { animation-delay: 1s; height: 28px; }
+@keyframes steamRise {
+  0% { opacity: 0; transform: translateY(10px) scale(0.8) rotate(0deg); }
+  25% { opacity: 0.55; }
+  75% { opacity: 0.25; }
+  100% { opacity: 0; transform: translateY(-46px) scale(1.3) rotate(8deg); }
+}
+
+/* ---- Body ---- */
+.special-body { padding: 20px 22px 24px; }
+.special-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.special-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.special-desc {
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.special-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.special-price {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--orange-soft);
+}
+.special-actions { display: flex; gap: 10px; }
+.special-actions .btn { flex: 1; }
+
+/* ---- Expanded details view (after "View Details") ---- */
+.special-details {
+  animation: specialDetailsIn 0.3s ease forwards;
+}
+@keyframes specialDetailsIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.special-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 4px;
+}
+.special-tab {
+  flex: 1;
+  text-align: center;
+  padding: 9px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.special-tab.active {
+  background: linear-gradient(135deg, var(--orange), var(--orange-2));
+  color: #1b1108;
+}
+
+.special-extra-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.special-extra-row:last-child { border-bottom: none; }
+
+.special-qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}

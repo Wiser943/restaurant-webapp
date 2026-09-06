@@ -1,5 +1,5 @@
 /* ============================================================
-   Mama Tolu's Kitchen - shared styles
+   VC Kitchen - shared styles
    Plain CSS, no build tools. Linked from every page with:
    <link rel="stylesheet" href="css/style.css">
    ============================================================ */
@@ -257,6 +257,11 @@ img {
 .field input::placeholder,
 .field textarea::placeholder {
   color: var(--ink-faint);
+}
+
+.field .input-invalid {
+  border-color: var(--red) !important;
+  box-shadow: 0 0 0 1px rgba(224, 90, 90, 0.35);
 }
 
 .badge {

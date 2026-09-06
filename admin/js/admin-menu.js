@@ -28,7 +28,7 @@ function renderList() {
   list.innerHTML = items.map((item) => `
     <div class="card" style="padding:14px 16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
       <div>
-        <p style="margin:0 0 4px; font-weight:600;">${item.name} <span class="helper-text">(${item.category})</span></p>
+        <p style="margin:0 0 4px; font-weight:600;">${item.name} <span class="helper-text">(${item.category})</span> ${item.isSpecial ? `<span style="color:var(--orange-soft); font-size:12px;"><i class="fa-solid fa-star"></i> Special</span>` : ''}</p>
         <p style="margin:0; font-family:var(--font-mono); color:var(--orange-soft);">${currency(item.currentPrice)}</p>
         ${item.extras?.length ? `<p class="helper-text" style="margin:4px 0 0;"><i class="fa-solid fa-plus"></i> ${item.extras.map((e) => `${e.name} (${currency(e.price)})`).join(', ')}</p>` : ''}
       </div>
@@ -102,9 +102,18 @@ function openForm(item) {
       <div class="field"><label>Category</label><input id="f-category" value="${item?.category || ''}" placeholder="e.g. Grill, Drinks, Rice" /></div>
       <div class="field"><label>Description</label><textarea id="f-desc" rows="2">${item?.description || ''}</textarea></div>
       <div class="field"><label>Price (₦)</label><input id="f-price" type="number" value="${item?.currentPrice || ''}" /></div>
-      <div class="field"><label>Image URL (optional)</label><input id="f-image" value="${item?.images?.[0] || ''}" placeholder="https://..." /></div>
+      <div class="field">
+        <label>Image URLs (optional — one per line, or comma-separated. First one is the main photo.)</label>
+        <textarea id="f-images" rows="2" placeholder="https://...\nhttps://...">${(item?.images || []).join('\n')}</textarea>
+      </div>
       <div class="field">
         <label><input type="checkbox" id="f-always" ${item?.isAlwaysOnMenu !== false ? 'checked' : ''} /> Always on the menu</label>
+      </div>
+      <div class="field">
+        <label>
+          <input type="checkbox" id="f-special" ${item?.isSpecial ? 'checked' : ''} />
+          <i class="fa-solid fa-star" style="color:var(--orange-soft);"></i> Mark as Chef's Special (shows in the popup on the customer dashboard)
+        </label>
       </div>
       <div class="ticket-tear"></div>
       <div class="field" id="extras-editor"></div>
@@ -134,8 +143,12 @@ async function saveItem() {
     category: document.getElementById('f-category').value,
     description: document.getElementById('f-desc').value,
     currentPrice: Number(document.getElementById('f-price').value),
-    images: document.getElementById('f-image').value ? [document.getElementById('f-image').value] : [],
+    images: document.getElementById('f-images').value
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean),
     isAlwaysOnMenu: document.getElementById('f-always').checked,
+    isSpecial: document.getElementById('f-special').checked,
     extras: cleanExtras,
   };
 

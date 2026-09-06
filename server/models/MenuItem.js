@@ -14,6 +14,10 @@ const menuItemSchema = new mongoose.Schema(
     // "always have" staple vs a rotating/limited item
     isAlwaysOnMenu: { type: Boolean, default: true },
 
+    // Admin-picked "Chef's Special" — shown in the persuasive popup on
+    // the customer dashboard whenever it's also available.
+    isSpecial: { type: Boolean, default: false },
+
     // whether it can be ordered right now (kitchen ran out, etc.)
     isAvailable: { type: Boolean, default: true },
 
