@@ -100,11 +100,15 @@ function openForm(item) {
       <p class="eyebrow" style="margin-bottom:10px;">${item ? 'Edit item' : 'New item'}</p>
       <div class="field"><label>Name</label><input id="f-name" value="${item?.name || ''}" /></div>
       <div class="field"><label>Category</label><input id="f-category" value="${item?.category || ''}" placeholder="e.g. Grill, Drinks, Rice" /></div>
-      <div class="field"><label>Description</label><textarea id="f-desc" rows="2">${item?.description || ''}</textarea></div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="f-desc" rows="4" placeholder="Leave a blank line between paragraphs so it reads well on the item page — it won't all run together as one block of text.">${item?.description || ''}</textarea>
+      </div>
       <div class="field"><label>Price (₦)</label><input id="f-price" type="number" value="${item?.currentPrice || ''}" /></div>
       <div class="field">
         <label>Image URLs (optional — separate with a comma or a new line. First one is the main photo, shown in a swipeable gallery if there's more than one.)</label>
         <textarea id="f-images" rows="2" placeholder="https://img1.jpg, https://img2.jpg">${(item?.images || []).join('\n')}</textarea>
+        <div id="images-preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"></div>
       </div>
       <div class="field">
         <label><input type="checkbox" id="f-always" ${item?.isAlwaysOnMenu !== false ? 'checked' : ''} /> Always on the menu</label>
@@ -126,8 +130,29 @@ function openForm(item) {
   `;
 
   renderExtrasEditor();
+  renderImagesPreview();
+  document.getElementById('f-images').addEventListener('input', renderImagesPreview);
   document.getElementById('cancel-btn').addEventListener('click', () => { wrap.innerHTML = ''; });
   document.getElementById('save-btn').addEventListener('click', saveItem);
+}
+
+function parseImagesField() {
+  return document.getElementById('f-images').value
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function renderImagesPreview() {
+  const urls = parseImagesField();
+  const preview = document.getElementById('images-preview');
+  if (!urls.length) { preview.innerHTML = ''; return; }
+  preview.innerHTML = urls.map((src, i) => `
+    <div style="position:relative;">
+      <img src="${src}" style="width:64px; height:64px; object-fit:cover; border-radius:10px; border:1px solid var(--glass-border);" onerror="this.style.opacity=0.25;" />
+      ${i === 0 ? `<span style="position:absolute; bottom:-6px; left:0; right:0; text-align:center; font-size:9px; color:var(--orange-soft); font-family:var(--font-mono);">MAIN</span>` : ''}
+    </div>
+  `).join('');
 }
 
 async function saveItem() {
@@ -143,10 +168,7 @@ async function saveItem() {
     category: document.getElementById('f-category').value,
     description: document.getElementById('f-desc').value,
     currentPrice: Number(document.getElementById('f-price').value),
-    images: document.getElementById('f-images').value
-      .split(/[\n,]/)
-      .map((s) => s.trim())
-      .filter(Boolean),
+    images: parseImagesField(),
     isAlwaysOnMenu: document.getElementById('f-always').checked,
     isSpecial: document.getElementById('f-special').checked,
     extras: cleanExtras,

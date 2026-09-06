@@ -113,6 +113,39 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function formatDescriptionHtml(text) {
+  // Preserve real paragraph breaks (blank line = new <p>) and single line
+  // breaks (<br>) instead of letting the browser collapse everything from
+  // the admin's textarea into one dense wall of text.
+  return text
+    .split(/\n\s*\n/)
+    .map((para) => escapeHtml(para.trim()).replace(/\n/g, '<br>'))
+    .filter(Boolean)
+    .map((para) => `<p>${para}</p>`)
+    .join('');
+}
+
+function renderDescription(text) {
+  const isLong = text.length > 220;
+  const id = 'item-description';
+  return `
+    <div class="description ${isLong ? 'collapsed' : ''}" id="${id}">${formatDescriptionHtml(text)}</div>
+    ${isLong ? `<button type="button" class="description-toggle" id="description-toggle-btn">Read more <i class="fa-solid fa-chevron-down"></i></button>` : ''}
+  `;
+}
+
+function bindDescriptionToggle() {
+  const btn = document.getElementById('description-toggle-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const desc = document.getElementById('item-description');
+    const collapsed = desc.classList.toggle('collapsed');
+    btn.innerHTML = collapsed
+      ? 'Read more <i class="fa-solid fa-chevron-down"></i>'
+      : 'Read less <i class="fa-solid fa-chevron-up"></i>';
+  });
+}
+
 function renderItem() {
   const priceIncreased = item.previousPrice != null && item.currentPrice > item.previousPrice;
 
@@ -130,7 +163,7 @@ function renderItem() {
         ${priceIncreased ? `<span class="price-old">${currency(item.previousPrice)}</span>` : ''}
       </div>
     </div>
-    ${item.description ? `<p class="description">${item.description}</p>` : ''}
+    ${item.description ? renderDescription(item.description) : ''}
     <div class="ticket-tear"></div>
     <div class="qty-row">
       <span class="qty-label">Quantity</span>
@@ -147,6 +180,7 @@ function renderItem() {
   document.getElementById('qty-plus').addEventListener('click', () => { quantity += 1; updateQtyAndButton(); });
 
   bindExtraControls();
+  bindDescriptionToggle();
   updateFavoriteIcon();
   updateAddButton();
 

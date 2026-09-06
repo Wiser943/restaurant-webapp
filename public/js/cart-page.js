@@ -46,25 +46,31 @@ function renderCart() {
       ${cart.items.map((line) => {
         const item = line.menuItem;
         if (!item) return '';
+        const thumb = item.images?.[0];
         return `
-          <div class="card cart-row" data-line="${line.lineId}">
-            <div class="cart-row-info">
-              <h3>${item.name}</h3>
-              <span class="price" style="color:var(--orange-soft); font-family:var(--font-mono);">${currency(item.currentPrice)}</span>
-              ${!item.isAvailable ? '<div><span class="badge badge-sold-out">No longer available</span></div>' : ''}
-              ${line.extras?.length ? `
-                <div class="cart-extras">
-                  ${line.extras.map((ex) => `<span class="cart-extra-chip">+ ${ex.quantity} × ${escapeHtml(ex.name)}</span>`).join('')}
-                </div>` : ''}
+          <div class="card cart-card" data-line="${line.lineId}">
+            <div class="cart-card-top">
+              ${thumb
+                ? `<img class="cart-card-thumb" src="${thumb}" alt="${escapeHtml(item.name)}" onerror="this.style.visibility='hidden'" />`
+                : `<div class="cart-card-thumb-placeholder">${escapeHtml(item.name.charAt(0))}</div>`}
+              <div class="cart-card-info">
+                <h3>${escapeHtml(item.name)}</h3>
+                <span class="cart-card-unit-price">${currency(item.currentPrice)} each</span>
+                ${!item.isAvailable ? '<div style="margin-top:6px;"><span class="badge badge-sold-out">No longer available</span></div>' : ''}
+                ${line.extras?.length ? `
+                  <div class="cart-extras">
+                    ${line.extras.map((ex) => `<span class="cart-extra-chip">+ ${ex.quantity} × ${escapeHtml(ex.name)}</span>`).join('')}
+                  </div>` : ''}
+              </div>
+              <button class="cart-card-remove remove-btn" aria-label="Remove item"><i class="fa-solid fa-trash-can"></i></button>
             </div>
-            <div class="cart-row-controls">
+            <div class="cart-card-footer">
               <div class="qty-control">
                 <button class="qty-minus" aria-label="Decrease quantity"><i class="fa-solid fa-minus"></i></button>
                 <span>${line.quantity}</span>
                 <button class="qty-plus" aria-label="Increase quantity"><i class="fa-solid fa-plus"></i></button>
               </div>
-              <span class="price" style="font-family:var(--font-mono); font-size:13px;">${currency(lineTotal(line))}</span>
-              <button class="btn btn-ghost btn-sm remove-btn">Remove</button>
+              <span class="cart-card-line-total">${currency(lineTotal(line))}</span>
             </div>
           </div>`;
       }).join('')}
@@ -77,7 +83,7 @@ function renderCart() {
     <a href="checkout.html" class="btn btn-primary btn-block">Proceed to checkout</a>
   `;
 
-  container.querySelectorAll('.cart-row').forEach((row) => {
+  container.querySelectorAll('.cart-card').forEach((row) => {
     const lineId = row.dataset.line;
     const line = cart.items.find((l) => l.lineId === lineId);
     row.querySelector('.qty-minus').addEventListener('click', () => changeQty(lineId, Math.max(0, line.quantity - 1)));
