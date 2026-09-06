@@ -1387,8 +1387,8 @@ img {
   display: flex; align-items: center; gap: 10px;
   background: rgba(28, 23, 18, 0.96);
   border: 1px solid var(--glass-border-strong);
-  border-radius: var(--radius-sm);
-  padding: 12px 18px; font-size: 13.5px; max-width: 90vw;
+  border-radius: var(--radius-sm);width: 100%;
+  padding: 12px 18px; font-size: 13.5px; max-width: 98vw;
   box-shadow: 0 14px 34px rgba(0,0,0,0.4);
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
