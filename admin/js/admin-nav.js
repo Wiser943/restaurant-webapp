@@ -22,7 +22,7 @@ function renderAdminNav(user) {
     { href: 'index.html', label: 'Orders' },
     { href: 'menu.html', label: 'Menu' },
     { href: 'support.html', label: 'Support' },
-    { href: 'index.html', label: 'View site' }
+    { href: '/index.html', label: 'View site' }
   ];
   el.innerHTML = `
     <div class="topbar">
