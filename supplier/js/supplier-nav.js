@@ -20,22 +20,18 @@ function renderSupplierNav(user) {
   if (!el) return;
   const links = [
     { href: 'index.html', label: 'Deliveries' },
-    { href: 'support.html', label: 'Support' },
+  { href: 'support.html', label: 'Support' },
   ];
   el.innerHTML = `
     <div class="topbar">
-      <span class="brand-name display"><i class="fa-solid fa-motorcycle"></i> Rider · ${user.name.split(' ')[0]}</span>
+      <span class="brand-name display"><i class="fa-solid fa-motorcycle"></i>Vc Kitchen</span>
       <div class="topbar-actions">
         <a href="profile.html" class="profile-icon-btn" style="width:36px;height:36px;" aria-label="My profile"><i class="fa-solid fa-user"></i></a>
-        <button id="supplier-logout" class="btn btn-ghost btn-sm">Log out</button>
       </div>
     </div>
     <nav class="admin-nav">
       ${links.map((l) => `<a href="${l.href}" class="${page === l.href ? 'active' : ''}">${l.label}</a>`).join('')}
     </nav>
   `;
-  document.getElementById('supplier-logout').addEventListener('click', async () => {
-    await api.post('/auth/logout', {});
-    window.location.href = '/index.html';
-  });
+  
 }
