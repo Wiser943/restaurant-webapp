@@ -27,7 +27,7 @@ function renderAdminNav(user) {
   ];
   el.innerHTML = `
     <div class="topbar">
-      <a href="index.html" class="brand-name display">Admin · VC Kitchen</a>
+      <a href="index.html" class="brand-name display">VC Kitchen</a>
       <div class="topbar-actions">
         <a href="profile.html" class="profile-icon-btn" style="width:36px;height:36px;" aria-label="Admin profile"><i class="fa-solid fa-user"></i></a>
       </div>

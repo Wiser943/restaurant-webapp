@@ -42,7 +42,7 @@ function render(stats) {
     <div class="profile-stats">
       <div class="profile-stat"><i class="fa-solid fa-bag-shopping"></i><span class="stat-num">${stats.totalOrders}</span><span class="stat-lbl">Total Orders</span></div>
       <div class="profile-stat"><i class="fa-solid fa-burger"></i><span class="stat-num">${stats.activeItems}</span><span class="stat-lbl">Active Items</span></div>
-      <div class="profile-stat"><i class="fa-solid fa-people-group"></i><span class="stat-num">${stats.teamMembers}</span><span class="stat-lbl">Team Members</span></div>
+      <div class="profile-stat"><i class="fa-solid fa-people-group"></i><span class="stat-num">${stats.teamMembers}</span><span class="stat-lbl">Members</span></div>
       <div class="profile-stat"><i class="fa-solid fa-hourglass-half"></i><span class="stat-num">${stats.pending}</span><span class="stat-lbl">Pending</span></div>
     </div>
 
