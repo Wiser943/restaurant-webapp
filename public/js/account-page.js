@@ -56,7 +56,7 @@ function render() {
           <a href="orders.html">View All</a>
         </div>
         <div class="profile-order-row" onclick="window.location.href='order.html?id=${latestOrder._id}'">
-          <img class="profile-order-thumb" src="${latestOrder.items?.[0]?.menuItem?.images?.[0] || ''}" onerror="this.style.visibility='hidden'" />
+          ${orderThumbHtml(latestOrder)}
           <div class="profile-order-info">
             <p class="o-name">${escapeHtml(latestOrder.items?.[0]?.name || 'Order')}${latestOrder.items?.length > 1 ? ` + ${latestOrder.items.length - 1} more` : ''}</p>
             <p class="o-meta">${new Date(latestOrder.createdAt).toLocaleDateString()} · ${friendlyStatus(latestOrder.orderStatus)}</p>
@@ -119,6 +119,28 @@ function render() {
     await api.post('/auth/logout', {});
     window.location.href = 'index.html';
   });
+}
+
+// Builds the small thumbnail next to the "My Orders" preview row. Falls
+// back to a lettered placeholder (instead of just hiding the <img>) when
+// there's no image on the order's first item, or if the image URL fails
+// to load.
+function orderThumbHtml(order) {
+  const src = order.items?.[0]?.menuItem?.images?.[0];
+  const label = (order.items?.[0]?.name || 'Order').charAt(0).toUpperCase();
+  if (!src) {
+    return `<div class="profile-order-thumb profile-order-thumb-placeholder">${escapeHtml(label)}</div>`;
+  }
+  return `<img class="profile-order-thumb" src="${src}" alt="${escapeHtml(order.items?.[0]?.name || 'Order')}" onerror="thumbFallback(this, '${escapeHtml(label).replace(/'/g, "\\'")}')" />`;
+}
+
+// Swaps a broken <img> for the same placeholder div used when there's no
+// image URL at all, so a dead link never just leaves an empty gap.
+function thumbFallback(imgEl, label) {
+  const div = document.createElement('div');
+  div.className = 'profile-order-thumb profile-order-thumb-placeholder';
+  div.textContent = label;
+  imgEl.replaceWith(div);
 }
 
 function friendlyStatus(status) {

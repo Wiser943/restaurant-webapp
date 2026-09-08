@@ -125,13 +125,24 @@ function formatDescriptionHtml(text) {
     .join('');
 }
 
+const DESCRIPTION_WORD_LIMIT = 80;
+
+// Splits on whitespace to get a real word count, rather than the previous
+// character-length check — 220 characters cuts some descriptions off far
+// earlier than others depending on word length.
+function descriptionWords(text) {
+  return text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+}
+
 function renderDescription(text) {
-  const isLong = text.length > 220;
+  const words = descriptionWords(text);
+  const isLong = words.length > DESCRIPTION_WORD_LIMIT;
   if (!isLong) {
     return `<div class="description">${formatDescriptionHtml(text)}</div>`;
   }
+  const shortText = words.slice(0, DESCRIPTION_WORD_LIMIT).join(' ') + '…';
   return `
-    <div class="description description-clamped" id="item-description">${escapeHtml(text.replace(/\s+/g, ' ').trim())}</div>
+    <div class="description" id="item-description">${escapeHtml(shortText)}</div>
     <button type="button" class="description-toggle" id="description-toggle-btn" data-expanded="false">Read more <i class="fa-solid fa-chevron-down"></i></button>
   `;
 }
@@ -139,16 +150,18 @@ function renderDescription(text) {
 function bindDescriptionToggle() {
   const btn = document.getElementById('description-toggle-btn');
   if (!btn) return;
+  const words = descriptionWords(item.description);
+  const shortText = words.slice(0, DESCRIPTION_WORD_LIMIT).join(' ') + '…';
   btn.addEventListener('click', () => {
     const desc = document.getElementById('item-description');
     const expanded = btn.dataset.expanded === 'true';
     if (expanded) {
-      desc.className = 'description description-clamped';
-      desc.textContent = item.description.replace(/\s+/g, ' ').trim();
+      // Read less: collapse back to the ~80-word preview.
+      desc.textContent = shortText;
       btn.innerHTML = 'Read more <i class="fa-solid fa-chevron-down"></i>';
       btn.dataset.expanded = 'false';
     } else {
-      desc.className = 'description';
+      // Read more: show the full description, paragraphs and all.
       desc.innerHTML = formatDescriptionHtml(item.description);
       btn.innerHTML = 'Read less <i class="fa-solid fa-chevron-up"></i>';
       btn.dataset.expanded = 'true';

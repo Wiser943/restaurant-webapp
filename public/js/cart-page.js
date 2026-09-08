@@ -51,7 +51,7 @@ function renderCart() {
           <div class="card cart-card" data-line="${line.lineId}">
             <div class="cart-card-top">
               ${thumb
-                ? `<img class="cart-card-thumb" src="${thumb}" alt="${escapeHtml(item.name)}" onerror="this.style.visibility='hidden'" />`
+                ? `<img class="cart-card-thumb" src="${thumb}" alt="${escapeHtml(item.name)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cart-card-thumb-placeholder',textContent:'${escapeHtml(item.name.charAt(0)).replace(/'/g, "\\'")}'}))" />`
                 : `<div class="cart-card-thumb-placeholder">${escapeHtml(item.name.charAt(0))}</div>`}
               <div class="cart-card-info">
                 <h3>${escapeHtml(item.name)}</h3>
@@ -62,6 +62,7 @@ function renderCart() {
                     ${line.extras.map((ex) => `<span class="cart-extra-chip">+ ${ex.quantity} × ${escapeHtml(ex.name)}</span>`).join('')}
                   </div>` : ''}
               </div>
+              <button class="cart-card-remove" aria-label="Remove ${escapeHtml(item.name)} from cart"><i class="fa-solid fa-trash-can"></i></button>
             </div>
             <div class="cart-card-footer">
               <div class="qty-control">
@@ -87,7 +88,7 @@ function renderCart() {
     const line = cart.items.find((l) => l.lineId === lineId);
     row.querySelector('.qty-minus').addEventListener('click', () => changeQty(lineId, Math.max(0, line.quantity - 1)));
     row.querySelector('.qty-plus').addEventListener('click', () => changeQty(lineId, line.quantity + 1));
-    row.querySelector('.remove-btn').addEventListener('click', () => removeItem(lineId));
+    row.querySelector('.cart-card-remove').addEventListener('click', () => removeItem(lineId));
   });
 }
 

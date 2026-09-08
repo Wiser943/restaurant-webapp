@@ -115,6 +115,16 @@
   width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
   background: var(--glass-strong);
 }
+.profile-order-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #2a2118, #1c1712);
+  border: 1px solid var(--glass-border);
+  color: var(--orange-soft);
+  font-family: var(--font-display);
+  font-size: 18px;
+}
 .profile-order-info { flex: 1; min-width: 0; }
 .profile-order-info .o-name { font-weight: 600; font-size: 14px; margin: 0 0 2px; }
 .profile-order-info .o-meta { color: var(--ink-faint); font-size: 12px; margin: 0; }
