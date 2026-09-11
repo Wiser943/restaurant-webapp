@@ -4,6 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>VC Kitchen</title>
+  <script>
+    // A true first-ever visit (fresh browser, or the very first time the
+    // installed app is opened) has nothing in localStorage yet - send it
+    // straight to onboarding before anything else on this page loads.
+    // nav.js separately re-shows onboarding every so often for people who
+    // are browsing logged out.
+    (function () {
+      try {
+        if (!localStorage.getItem('vck_onboarding_done')) {
+          window.location.replace('onboarding.html');
+        }
+      } catch (e) { /* localStorage unavailable - just show the normal home page */ }
+    })();
+  </script>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#16120e" />
   <link rel="stylesheet" href="css/style.css" />

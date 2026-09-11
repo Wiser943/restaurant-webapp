@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Welcome — VC Kitchen</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#16120e" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body style="padding-bottom: 0;">
+  <div class="onboard-shell">
+
+    <!-- Splash / loading -->
+    <section class="onboard-splash" id="onboard-splash">
+      <div class="onboard-logo-wrap">
+        <div class="onboard-logo-badge glass-circle"><i class="fa-solid fa-utensils"></i></div>
+        <h1 class="display onboard-logo-text">VC Kitchen</h1>
+      </div>
+      <div class="onboard-loader"><span></span></div>
+    </section>
+
+    <!-- Slides -->
+    <div class="onboard-slides" id="onboard-slides">
+      <button class="onboard-skip" id="onboard-skip" type="button">Skip</button>
+
+      <div class="onboard-track" id="onboard-track">
+        <div class="onboard-slide">
+          <div class="onboard-art">
+            <div class="onboard-art-glow"></div>
+            <div class="onboard-art-icon"><i class="fa-solid fa-bowl-food"></i></div>
+          </div>
+          <div class="onboard-copy">
+            <h2 class="display">Good food,<br />good mood.</h2>
+            <p>Everything you're craving from the kitchen, ready when you are.</p>
+          </div>
+        </div>
+
+        <div class="onboard-slide">
+          <div class="onboard-art">
+            <div class="onboard-art-glow"></div>
+            <div class="onboard-art-icon"><i class="fa-solid fa-motorcycle"></i></div>
+          </div>
+          <div class="onboard-copy">
+            <h2 class="display">Order in<br />seconds.</h2>
+            <p>Pick it up yourself, or get it delivered straight to your doorstep.</p>
+          </div>
+        </div>
+
+        <div class="onboard-slide">
+          <div class="onboard-art">
+            <div class="onboard-art-glow"></div>
+            <div class="onboard-art-icon"><i class="fa-solid fa-heart"></i></div>
+          </div>
+          <div class="onboard-copy">
+            <h2 class="display">Join the<br />VC Kitchen family.</h2>
+            <p>Save your favorites, track every order, and earn rewards along the way.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="onboard-dots" id="onboard-dots">
+        <span class="onboard-dot active" data-index="0"></span>
+        <span class="onboard-dot" data-index="1"></span>
+        <span class="onboard-dot" data-index="2"></span>
+      </div>
+
+      <div class="onboard-cta" id="onboard-cta-mid">
+        <button class="btn btn-primary btn-block" id="onboard-next" type="button">Next</button>
+      </div>
+
+      <div class="onboard-cta" id="onboard-cta-final" style="display:none;">
+        <button class="btn btn-primary btn-block" id="onboard-signup" type="button">Create an account</button>
+        <button class="btn btn-ghost btn-block" id="onboard-login" type="button">I already have an account</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/onboarding.js"></script>
+</body>
+</html>

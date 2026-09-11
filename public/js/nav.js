@@ -2,7 +2,10 @@
 // Each HTML page just needs two empty containers:
 //   <div id="topbar"></div>
 //   <div id="tabbar"></div>
-// and includes this script. This file fills them in.
+// and includes this script. This file fills them in. It also owns two
+// other cross-page bits: gently steering logged-out visitors back through
+// the onboarding carousel every so often, and showing our own "install the
+// app" banner (separate from the browser's native one).
 
 const TABS = [
   { href: 'index.html', label: 'Home', match: ['', 'index.html'] },
@@ -12,8 +15,36 @@ const TABS = [
   { href: 'account.html', label: 'Profile', match: ['account.html'] },
 ];
 
+// Pages that are already part of the "getting in" flow - never redirect to
+// onboarding from these, and never show the install banner on top of them.
+const ENTRY_FLOW_PAGES = ['onboarding.html', 'login.html', 'signup.html'];
+
+// How often a logged-out visitor gets nudged back through onboarding.
+const ONBOARDING_RESHOW_DAYS = 14;
+// How often the custom install banner is allowed to reappear once dismissed.
+const INSTALL_RESHOW_DAYS = 4;
+
 function currentPage() {
   return window.location.pathname.split('/').pop();
+}
+
+// Returns true if it just redirected the page away. index.html also does its
+// own instant check before this file even loads, for a true first-ever-visit;
+// this one covers the periodic "from time to time" re-show for people
+// browsing while logged out.
+function maybeRedirectToOnboarding(isLoggedIn) {
+  if (isLoggedIn) return false;
+  if (ENTRY_FLOW_PAGES.includes(currentPage())) return false;
+  if (currentPage() !== 'index.html' && currentPage() !== '') return false;
+
+  let last = 0;
+  try { last = Number(localStorage.getItem('vck_onboarding_last_shown') || 0); } catch (e) { /* ignore */ }
+  const daysSince = (Date.now() - last) / (1000 * 60 * 60 * 24);
+  if (last && daysSince < ONBOARDING_RESHOW_DAYS) return false;
+
+  try { localStorage.setItem('vck_onboarding_last_shown', String(Date.now())); } catch (e) { /* ignore */ }
+  window.location.replace('onboarding.html');
+  return true;
 }
 
 async function renderNav() {
@@ -29,24 +60,46 @@ async function renderNav() {
     Push.subscribe(); // fire-and-forget; no-op if already subscribed or permission not granted yet
   } catch (e) { /* not logged in - totally normal on a public menu page */ }
 
-  // Find out how many items are in the cart (only makes sense if logged in)
+  if (maybeRedirectToOnboarding(!!user)) return; // page is navigating away, nothing left to render
+
+  // Find out how many items are in the cart, and whether there's anything
+  // new since the person last opened Notifications (only makes sense if logged in).
   let cartCount = 0;
+  let hasUnseenNotifications = false;
   if (user) {
     try {
       const data = await api.get('/cart');
       cartCount = (data.cart.items || []).reduce((sum, i) => sum + i.quantity, 0);
     } catch (e) { /* ignore */ }
+
+    try {
+      const data = await api.get('/orders');
+      const orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
+      const latest = orders.reduce((max, o) => Math.max(max, new Date(o.updatedAt || o.createdAt).getTime()), 0);
+      let lastSeen = 0;
+      try { lastSeen = Number(localStorage.getItem('vck_notif_last_seen') || 0); } catch (e) { /* ignore */ }
+      hasUnseenNotifications = latest > lastSeen;
+    } catch (e) { /* ignore */ }
   }
 
   if (topbarEl) {
     topbarEl.innerHTML = `
-      <a href="index.html" class="brand-name display">VC Kitchen</a>
+      <div class="topbar-left">
+        <button class="bell-btn glass-circle" id="notif-bell" aria-label="Notifications">
+          <i class="fa-solid fa-bell"></i>
+          ${hasUnseenNotifications ? '<span class="bell-dot"></span>' : ''}
+        </button>
+        <a href="index.html" class="brand-name display">VC Kitchen</a>
+      </div>
       <div class="topbar-actions">
         ${user?.role === 'admin' ? '<a href="/admin" class="btn btn-ghost btn-sm">Admin</a>' : ''}
         ${user ? '' : '<a href="login.html" class="btn btn-primary btn-sm">Log in</a>'}
       </div>
     `;
     topbarEl.className = 'topbar';
+    document.getElementById('notif-bell').addEventListener('click', () => {
+      window.location.href = 'notifications.html';
+    });
   }
 
   if (tabbarEl) {
@@ -63,6 +116,8 @@ async function renderNav() {
         </a>`;
     }).join('');
   }
+
+  maybeShowInstallBanner();
 }
 
 function tabIcon(label, active) {
@@ -84,4 +139,91 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => { /* not critical if this fails */ });
   });
+}
+
+// ============================================================
+// Custom "install the app" banner
+// This lives ALONGSIDE the browser's own install prompt - it's a branded
+// nudge that can show up periodically (first visit, then every few days
+// until installed), not just the one-shot native Chrome mini-infobar.
+// ============================================================
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); // stop the bare native mini-infobar; we show our own banner instead
+  deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', () => {
+  try { localStorage.setItem('vck_install_done', '1'); } catch (e) { /* ignore */ }
+});
+
+function isStandaloneApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIOSDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+function maybeShowInstallBanner() {
+  if (isStandaloneApp()) return; // already running as the installed app
+  if (ENTRY_FLOW_PAGES.includes(currentPage())) return; // don't clutter the onboarding/login/signup screens
+  if (document.getElementById('install-banner')) return;
+
+  let installed = false, last = 0;
+  try {
+    installed = localStorage.getItem('vck_install_done') === '1';
+    last = Number(localStorage.getItem('vck_install_prompt_last') || 0);
+  } catch (e) { /* ignore */ }
+  if (installed) return;
+
+  const daysSince = (Date.now() - last) / (1000 * 60 * 60 * 24);
+  if (last && daysSince < INSTALL_RESHOW_DAYS) return;
+
+  // Give the page a moment to settle before popping this up.
+  setTimeout(() => {
+    if (!deferredInstallPrompt && !isIOSDevice()) return; // nothing this browser can do anyway
+    showInstallBanner();
+  }, 1400);
+}
+
+function showInstallBanner() {
+  try { localStorage.setItem('vck_install_prompt_last', String(Date.now())); } catch (e) { /* ignore */ }
+
+  const el = document.createElement('div');
+  el.id = 'install-banner';
+  el.className = 'install-banner glass-strong';
+  el.innerHTML = `
+    <div class="install-banner-icon"><i class="fa-solid fa-utensils"></i></div>
+    <div class="install-banner-copy">
+      <p class="install-banner-title">Get the VC Kitchen app</p>
+      <p class="install-banner-sub">${isIOSDevice() ? 'Tap Share, then "Add to Home Screen"' : 'Faster ordering, right from your home screen'}</p>
+    </div>
+    <div class="install-banner-actions">
+      ${isIOSDevice() ? '' : '<button class="btn btn-primary btn-sm" id="install-accept">Install</button>'}
+      <button class="btn btn-ghost btn-sm btn-icon" id="install-dismiss" aria-label="Dismiss"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  `;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+
+  document.getElementById('install-dismiss').addEventListener('click', () => closeInstallBanner(el));
+
+  const acceptBtn = document.getElementById('install-accept');
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', async () => {
+      closeInstallBanner(el);
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      try {
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') localStorage.setItem('vck_install_done', '1');
+      } catch (e) { /* ignore */ }
+      deferredInstallPrompt = null;
+    });
+  }
+}
+
+function closeInstallBanner(el) {
+  el.classList.remove('show');
+  setTimeout(() => el.remove(), 250);
 }
