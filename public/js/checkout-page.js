@@ -1,8 +1,14 @@
-// Logic for the checkout page - shows the bank account to pay into,
-// then submits the order as "awaiting approval".
+// Logic for the checkout page. No account number and no address textarea
+// here anymore — the customer picks a saved address (managed on the
+// Addresses page) and, if delivery works out close by (IN_HOUSE), can
+// choose to pay after delivery instead of by bank transfer. Either way,
+// nothing payment-related is shown until an admin has reviewed and
+// stamped the order (see order.html for that next stage).
 
 let cart = { items: [] };
-let paymentInfo = null;
+let addresses = [];
+let selectedAddressId = null;
+let paymentMethod = 'bank_transfer';
 let customerLocation = null; // { lat, lng } from HTML5 Geolocation, captured at checkout
 let deliveryQuote = null; // { mode, fee, etaMinutes, distanceKm } from POST /delivery/quote
 let deliveryState = 'idle'; // 'idle' | 'locating' | 'quoting' | 'ready' | 'error'
@@ -22,9 +28,11 @@ async function loadCheckout() {
   } catch (e) { cart = { items: [] }; }
 
   try {
-    const data = await api.get('/payment-info');
-    paymentInfo = data.paymentInfo;
-  } catch (e) { paymentInfo = null; }
+    const data = await api.get('/auth/addresses');
+    addresses = data.addresses || [];
+    const def = addresses.find((a) => a.isDefault) || addresses[0];
+    selectedAddressId = def ? def._id : null;
+  } catch (e) { addresses = []; }
 
   renderCheckout();
   detectLocationAndQuote(); // fires the browser's location permission prompt right at checkout, per spec
@@ -34,6 +42,10 @@ function lineTotal(line) {
   const base = (line.menuItem?.currentPrice ?? line.priceAtAdd) * line.quantity;
   const extras = (line.extras || []).reduce((s, e) => s + e.price * e.quantity, 0);
   return base + extras;
+}
+
+function foodSubtotal() {
+  return cart.items.reduce((sum, line) => sum + lineTotal(line), 0);
 }
 
 function renderCheckout() {
@@ -57,39 +69,19 @@ function renderCheckout() {
       `).join('')}
     </div>
 
+    <div class="card" style="padding:16px; margin-bottom:20px;">
+      <p class="eyebrow" style="margin-bottom:10px;">Delivery address <span class="error-text" style="font-size:12px;">*required</span></p>
+      <div id="address-picker"></div>
+    </div>
+
     <div class="card" style="padding:16px; margin-bottom:20px;" id="delivery-wrap"></div>
 
-    <div class="card" style="padding:20px; margin-bottom:20px;">
-      <p class="eyebrow" style="margin-bottom:10px;">Pay by bank transfer</p>
-      ${paymentInfo ? `
-        <p style="margin:4px 0;">${paymentInfo.bankName}</p>
-        <div class="account-row">
-          <span class="account-number">${paymentInfo.accountNumber}</span>
-          <button class="btn btn-ghost btn-sm" id="copy-btn"><i class="fa-regular fa-copy"></i> Copy</button>
-        </div>
-        <p style="margin:4px 0 12px;">${paymentInfo.accountName}</p>
-        <div class="ticket-tear"></div>
-        <p class="helper-text">${paymentInfo.instructions}</p>
-      ` : `<p class="helper-text">Bank details aren't set up yet — contact the restaurant directly.</p>`}
-    </div>
-
-    <div class="field">
-      <label for="address">Delivery address <span class="error-text" style="font-size:12px;">*required</span></label>
-      <textarea id="address" rows="3" placeholder="e.g. House 12, Block C, Off Marina Road, near the blue gate, Calabar, Cross River State" required></textarea>
-      <span class="helper-text">Please write a full address (street, house/landmark, area, city) — at least 10 words — so the rider can actually find you.</span>
-      <span class="error-text" id="address-error" style="display:none;"></span>
-    </div>
-
-    <div class="field">
-      <label for="note">Transfer reference (recommended)</label>
-      <input id="note" placeholder="Name it was sent under, or your bank's reference" />
-      <span class="helper-text">This helps us match your payment faster.</span>
-    </div>
+    <div class="card" style="padding:16px; margin-bottom:20px;" id="payment-method-wrap"></div>
 
     <div class="field">
       <label for="description">Anything else we should know? (optional)</label>
       <textarea id="description" rows="2" placeholder="e.g. no onions please, extra spicy…"></textarea>
-      <span class="helper-text">If your request changes the price, we'll update your total and let you know in Support chat before preparing it.</span>
+      <span class="helper-text">If your request changes the price, we'll update your total and let you know once we review your order.</span>
     </div>
 
     <div class="ticket-tear"></div>
@@ -101,64 +93,91 @@ function renderCheckout() {
 
     <p class="error-text" id="error-text" style="display:none;"></p>
 
-    <button class="btn btn-primary btn-block" id="submit-btn">I've sent the transfer — submit order</button>
+    <button class="btn btn-primary btn-block" id="submit-btn">Submit order for review</button>
     <p class="helper-text" style="margin-top:10px; text-align:center;">
-      Your order stays "awaiting approval" until we confirm the payment.
+      We'll review your order first — you'll see payment details (or your "pay on delivery" confirmation) as soon as it's approved.
     </p>
   `;
 
+  renderAddressPicker();
   renderDeliveryCard(); // separate function so re-runs (after locating/quoting) don't wipe the form above
-
-  if (paymentInfo) {
-    document.getElementById('copy-btn').addEventListener('click', () => {
-      navigator.clipboard.writeText(paymentInfo.accountNumber);
-      const btn = document.getElementById('copy-btn');
-      btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
-      UI.toast('Account number copied', { type: 'success' });
-      setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 1500);
-    });
-  }
+  renderPaymentMethod();
 
   document.getElementById('submit-btn').addEventListener('click', placeOrder);
+}
 
-  const addressEl = document.getElementById('address');
-  addressEl.addEventListener('blur', () => validateAddress(addressEl.value, { showOk: false }));
-  addressEl.addEventListener('input', () => {
-    const err = document.getElementById('address-error');
-    if (err.style.display !== 'none') validateAddress(addressEl.value, { showOk: false });
+function renderAddressPicker() {
+  const wrap = document.getElementById('address-picker');
+  if (!wrap) return;
+
+  if (!addresses.length) {
+    wrap.innerHTML = `
+      <p class="helper-text" style="margin-bottom:10px;">You don't have a saved address yet.</p>
+      <a class="btn btn-ghost btn-block" href="addresses.html?next=checkout.html"><i class="fa-solid fa-plus"></i> Add a delivery address</a>
+    `;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      ${addresses.map((a) => `
+        <label class="address-choice ${selectedAddressId === a._id ? 'selected' : ''}">
+          <input type="radio" name="address-choice" value="${a._id}" ${selectedAddressId === a._id ? 'checked' : ''} />
+          <span class="address-choice-label">
+            <strong><i class="fa-solid ${a.label === 'Work' ? 'fa-briefcase' : a.label === 'Other' ? 'fa-location-dot' : 'fa-house'}"></i> ${escapeHtmlLocal(a.label || 'Home')}</strong>
+            <span class="helper-text" style="display:block;">${escapeHtmlLocal(a.address)}</span>
+          </span>
+        </label>
+      `).join('')}
+    </div>
+    <a href="addresses.html?next=checkout.html" class="helper-text" style="display:inline-block; margin-top:10px; text-decoration:underline;">Manage addresses</a>
+  `;
+
+  wrap.querySelectorAll('input[name="address-choice"]').forEach((input) => {
+    input.addEventListener('change', (e) => {
+      selectedAddressId = e.target.value;
+      renderAddressPicker();
+    });
   });
 }
 
-const MIN_ADDRESS_WORDS = 10;
+function renderPaymentMethod() {
+  const wrap = document.getElementById('payment-method-wrap');
+  if (!wrap) return;
 
-// Returns the trimmed, validated address string, or null (and shows an
-// inline error) if it doesn't look like a real, full address yet.
-function validateAddress(raw, { showOk = true } = {}) {
-  const value = (raw || '').trim();
-  const errorEl = document.getElementById('address-error');
-  const wordCount = value.length ? value.split(/\s+/).filter(Boolean).length : 0;
+  const isClose = deliveryState === 'ready' && deliveryQuote?.mode === 'IN_HOUSE';
+  if (!isClose && paymentMethod === 'pay_on_delivery') paymentMethod = 'bank_transfer';
 
-  let message = '';
-  if (!value) {
-    message = 'Delivery address is required.';
-  } else if (wordCount < MIN_ADDRESS_WORDS) {
-    message = `Please add a bit more detail — at least ${MIN_ADDRESS_WORDS} words (street, house/landmark, area, city). ${wordCount}/${MIN_ADDRESS_WORDS} so far.`;
-  }
+  wrap.innerHTML = `
+    <p class="eyebrow" style="margin-bottom:10px;">How would you like to pay?</p>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <label class="address-choice ${paymentMethod === 'bank_transfer' ? 'selected' : ''}">
+        <input type="radio" name="payment-choice" value="bank_transfer" ${paymentMethod === 'bank_transfer' ? 'checked' : ''} />
+        <span class="address-choice-label">
+          <strong><i class="fa-solid fa-building-columns"></i> Pay by bank transfer</strong>
+          <span class="helper-text" style="display:block;">We'll show you the account details once your order is approved.</span>
+        </span>
+      </label>
+      <label class="address-choice ${!isClose ? 'disabled' : ''} ${paymentMethod === 'pay_on_delivery' ? 'selected' : ''}">
+        <input type="radio" name="payment-choice" value="pay_on_delivery" ${paymentMethod === 'pay_on_delivery' ? 'checked' : ''} ${!isClose ? 'disabled' : ''} />
+        <span class="address-choice-label">
+          <strong><i class="fa-solid fa-hand-holding-dollar"></i> Pay after delivery</strong>
+          <span class="helper-text" style="display:block;">
+            ${isClose
+              ? 'Pay the rider when your order arrives. Still needs admin approval before it starts preparing.'
+              : 'Only available for addresses close enough for our own in-house delivery.'}
+          </span>
+        </span>
+      </label>
+    </div>
+  `;
 
-  if (message) {
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-    document.getElementById('address').classList.add('input-invalid');
-    return null;
-  }
-
-  errorEl.style.display = 'none';
-  document.getElementById('address').classList.remove('input-invalid');
-  return value;
-}
-
-function foodSubtotal() {
-  return cart.items.reduce((sum, line) => sum + lineTotal(line), 0);
+  wrap.querySelectorAll('input[name="payment-choice"]').forEach((input) => {
+    input.addEventListener('change', (e) => {
+      paymentMethod = e.target.value;
+      renderPaymentMethod();
+    });
+  });
 }
 
 function renderDeliveryCard() {
@@ -180,7 +199,7 @@ function renderDeliveryCard() {
       <p class="error-text" style="margin:0 0 10px;">${deliveryError}</p>
       <button class="btn btn-ghost btn-sm" id="retry-location-btn"><i class="fa-solid fa-rotate-right"></i> Try again</button>
       <p class="helper-text" style="margin-top:8px;">
-        You can still submit — we'll confirm your exact delivery fee in Support after your order comes in.
+        You can still submit — we'll confirm your exact delivery fee during review. "Pay after delivery" needs a resolved location, though.
       </p>`;
     document.getElementById('retry-location-btn').addEventListener('click', detectLocationAndQuote);
     return;
@@ -236,6 +255,7 @@ async function detectLocationAndQuote() {
   }
 
   renderDeliveryCard();
+  renderPaymentMethod();
   updateTotalDisplay();
 }
 
@@ -244,10 +264,10 @@ async function placeOrder() {
   const errorText = document.getElementById('error-text');
   errorText.style.display = 'none';
 
-  const address = validateAddress(document.getElementById('address').value);
-  if (!address) {
-    document.getElementById('address').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    document.getElementById('address').focus();
+  if (!selectedAddressId) {
+    errorText.textContent = 'Please choose (or add) a delivery address.';
+    errorText.style.display = 'block';
+    document.getElementById('address-picker').scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
 
@@ -256,9 +276,8 @@ async function placeOrder() {
 
   try {
     const data = await api.post('/orders', {
-      deliveryAddress: address,
-      paymentReference: document.getElementById('note').value,
-      paymentMethod: 'bank_transfer',
+      addressId: selectedAddressId,
+      paymentMethod,
       notes: document.getElementById('description').value,
       // Sent whenever we managed to get it — the backend recomputes the
       // authoritative mode/fee itself from these coordinates rather than
@@ -266,7 +285,7 @@ async function placeOrder() {
       customerLocation: customerLocation || undefined,
     });
     Sound.orderPlaced();
-    await UI.alert('Your order has been submitted and is awaiting payment approval. We\'ll notify you as soon as it\'s confirmed.', {
+    await UI.alert("Your order has been submitted and is awaiting review. We'll notify you as soon as it's approved.", {
       title: 'Order placed',
       kind: 'success',
     });
@@ -275,8 +294,14 @@ async function placeOrder() {
     errorText.textContent = err.message;
     errorText.style.display = 'block';
     btn.disabled = false;
-    btn.textContent = "I've sent the transfer — submit order";
+    btn.textContent = 'Submit order for review';
   }
+}
+
+function escapeHtmlLocal(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 loadCheckout();

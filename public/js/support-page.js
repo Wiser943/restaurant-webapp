@@ -66,9 +66,9 @@ function renderHeader() {
 }
 
 const ORDER_STATUS_MAP = {
-  pending: { label: 'Awaiting approval', cls: 'badge-pending', icon: 'fa-clock' },
+  pending: { label: 'Awaiting review', cls: 'badge-pending', icon: 'fa-clock' },
+  awaiting_payment: { label: 'Awaiting payment', cls: 'badge-pending', icon: 'fa-circle-check' },
   preparing: { label: 'Preparing', cls: 'badge-pending', icon: 'fa-fire-burner' },
-  confirmed: { label: 'Confirmed', cls: 'badge-approved', icon: 'fa-circle-check' },
   out_for_delivery: { label: 'Out for delivery', cls: 'badge-approved', icon: 'fa-motorcycle' },
   completed: { label: 'Delivered', cls: 'badge-approved', icon: 'fa-circle-check' },
   cancelled: { label: 'Cancelled', cls: 'badge-rejected', icon: 'fa-circle-xmark' },

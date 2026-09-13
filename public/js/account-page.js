@@ -110,7 +110,7 @@ function render() {
   `;
 
   document.getElementById('avatar-btn').addEventListener('click', changeAvatar);
-  document.getElementById('row-addresses').addEventListener('click', openAddresses);
+  document.getElementById('row-addresses').addEventListener('click', () => { window.location.href = 'addresses.html'; });
   document.getElementById('row-notifications').addEventListener('click', openNotifications);
   document.getElementById('row-password').addEventListener('click', openChangePassword);
   document.getElementById('logout-row').addEventListener('click', async () => {
@@ -145,8 +145,8 @@ function thumbFallback(imgEl, label) {
 
 function friendlyStatus(status) {
   const map = {
-    pending: 'Awaiting approval', confirmed: 'Confirmed', preparing: 'Preparing',
-    out_for_delivery: 'Out for delivery', delivered: 'Delivered', cancelled: 'Cancelled',
+    pending: 'Awaiting review', awaiting_payment: 'Awaiting payment', preparing: 'Preparing',
+    out_for_delivery: 'Out for delivery', completed: 'Delivered', cancelled: 'Cancelled',
   };
   return map[status] || status;
 }
@@ -158,24 +158,6 @@ async function changeAvatar() {
     const data = await api.patch('/auth/profile', { avatarUrl: url });
     profileUser = data.user;
     UI.toast('Profile photo updated', { type: 'success' });
-    render();
-  } catch (err) {
-    UI.toast(err.message, { type: 'danger' });
-  }
-}
-
-async function openAddresses() {
-  const list = profileAddresses.length
-    ? profileAddresses.map((a) => `• ${a.label}: ${a.address}${a.isDefault ? ' (default)' : ''}`).join('\n')
-    : 'No saved addresses yet.';
-  const action = await UI.confirm(list, { title: 'Your addresses', confirmText: 'Add new address', cancelText: 'Close' });
-  if (!action) return;
-  const address = await UI.prompt('Enter a full delivery address (street, house/landmark, area, city — at least 10 words).', { title: 'New address', confirmText: 'Save address' });
-  if (!address) return;
-  try {
-    const data = await api.post('/auth/addresses', { label: 'Home', address, isDefault: profileAddresses.length === 0 });
-    profileAddresses = data.addresses;
-    UI.toast('Address saved', { type: 'success' });
     render();
   } catch (err) {
     UI.toast(err.message, { type: 'danger' });

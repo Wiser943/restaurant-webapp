@@ -20,9 +20,13 @@
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
       <h1 class="display" style="margin:0;">Orders</h1>
       <select id="filter-select" class="btn btn-small btn-ghost" style="margin:0; width:auto;appearance: none;-webkit-appearance: none;-moz-appearance: none;">
-        <option value="pending">Awaiting approval</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
+        <option value="review_pending">Awaiting review</option>
+        <option value="awaiting_payment">Awaiting payment</option>
+        <option value="proof_submitted">Proof submitted</option>
+        <option value="preparing">Preparing</option>
+        <option value="out_for_delivery">Out for delivery</option>
+        <option value="completed">Completed</option>
+        <option value="cancelled">Rejected / cancelled</option>
         <option value="">All</option>
       </select>
     </div>

@@ -13,7 +13,7 @@ async function loadAdminProfile() {
   ]);
 
   const totalOrders = ordersData.status === 'fulfilled' ? ordersData.value.orders.length : 0;
-  const pending = ordersData.status === 'fulfilled' ? ordersData.value.orders.filter((o) => o.paymentStatus === 'pending').length : 0;
+  const pending = ordersData.status === 'fulfilled' ? ordersData.value.orders.filter((o) => o.reviewStatus === 'pending').length : 0;
   const activeItems = menuData.status === 'fulfilled' ? menuData.value.items.filter((i) => i.isAvailable).length : 0;
   const teamMembers = suppliersData.status === 'fulfilled' ? suppliersData.value.suppliers.length : 0;
 

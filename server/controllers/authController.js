@@ -112,14 +112,19 @@ exports.getAddresses = async (req, res, next) => {
   }
 };
 
+const MAX_SAVED_ADDRESSES = 2;
+
 // POST /api/auth/addresses  { label, address, isDefault }
 exports.addAddress = async (req, res, next) => {
   try {
     const { label, address, isDefault } = req.body;
     if (!address || address.trim().split(/\s+/).filter(Boolean).length < 4) {
-      return res.status(400).json({ message: 'Please enter a full address of at least 5 words.' });
+      return res.status(400).json({ message: 'Please enter a full address of at least 4 words (street/house, area, city).' });
     }
     const user = await User.findById(req.user._id);
+    if (user.addresses.length >= MAX_SAVED_ADDRESSES) {
+      return res.status(400).json({ message: `You can save up to ${MAX_SAVED_ADDRESSES} addresses. Delete one before adding another.` });
+    }
     if (isDefault) user.addresses.forEach((a) => { a.isDefault = false; });
     user.addresses.push({ label: label || 'Home', address: address.trim(), isDefault: Boolean(isDefault) || user.addresses.length === 0 });
     await user.save();
@@ -129,11 +134,39 @@ exports.addAddress = async (req, res, next) => {
   }
 };
 
+// PATCH /api/auth/addresses/:addressId  { label?, address?, isDefault? }
+exports.updateAddress = async (req, res, next) => {
+  try {
+    const { label, address, isDefault } = req.body;
+    if (address !== undefined && address.trim().split(/\s+/).filter(Boolean).length < 4) {
+      return res.status(400).json({ message: 'Please enter a full address of at least 4 words (street/house, area, city).' });
+    }
+    const user = await User.findById(req.user._id);
+    const entry = user.addresses.id(req.params.addressId);
+    if (!entry) return res.status(404).json({ message: 'Address not found.' });
+
+    if (label !== undefined) entry.label = label.trim() || 'Home';
+    if (address !== undefined) entry.address = address.trim();
+    if (isDefault) {
+      user.addresses.forEach((a) => { a.isDefault = false; });
+      entry.isDefault = true;
+    }
+    await user.save();
+    res.json({ addresses: user.addresses });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // DELETE /api/auth/addresses/:addressId
 exports.deleteAddress = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
+    const wasDefault = user.addresses.find((a) => String(a._id) === req.params.addressId)?.isDefault;
     user.addresses = user.addresses.filter((a) => String(a._id) !== req.params.addressId);
+    // If we just removed the default address, promote whichever is left so
+    // there's always a sensible default for checkout to preselect.
+    if (wasDefault && user.addresses.length) user.addresses[0].isDefault = true;
     await user.save();
     res.json({ addresses: user.addresses });
   } catch (err) {

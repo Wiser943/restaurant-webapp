@@ -80,23 +80,58 @@ const orderSchema = new mongoose.Schema(
     originalTotalAmount: { type: Number },
     priceAdjustmentReason: { type: String },
 
-    // Only "approved" here should ever be shown to the customer as "successful"
-    paymentStatus: {
+    // How the customer intends to pay. "pay_on_delivery" is only offered at
+    // checkout when the delivery resolves to IN_HOUSE (i.e. the customer is
+    // close by) and still needs an admin's explicit sign-off (reviewStatus
+    // below) before the order is allowed to move to "preparing".
+    paymentMethod: {
+      type: String,
+      enum: ['bank_transfer', 'pay_on_delivery'],
+      default: 'bank_transfer',
+    },
+
+    // The FIRST admin gate: has anyone actually looked at this order and its
+    // price yet? Nothing (bank details, "preparing" status, etc.) is shown
+    // to the customer until an admin stamps this "approved" — that's the
+    // "admin should see it, whether to adjust price or press the stamp" step.
+    reviewStatus: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending',
     },
-    paymentReference: { type: String }, // gateway reference (Paystack/Flutterwave) if used
-    paymentMethod: { type: String, default: 'unspecified' },
+
+    // The SECOND gate, only relevant for paymentMethod: "bank_transfer":
+    //  pending               - not reviewed yet, nothing shown to customer
+    //  awaiting_payment      - admin stamped it; customer can now see the
+    //                          account details and pay
+    //  proof_submitted       - customer uploaded (or skipped) a screenshot
+    //                          and says they've sent the transfer
+    //  approved              - admin confirmed the money actually landed
+    //  rejected              - admin could not verify the payment
+    //  not_required          - pay_on_delivery orders that passed review skip
+    //                          straight here, no payment screen needed
+    // Only "approved" or "not_required" mean the order can be "preparing".
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'awaiting_payment', 'proof_submitted', 'approved', 'rejected', 'not_required'],
+      default: 'pending',
+    },
+    paymentReference: { type: String }, // transfer note / bank reference the customer typed in
+    // Link to the transaction-screenshot the customer optionally uploaded to
+    // ImgBB from the order page, so the admin can visually confirm payment.
+    paymentProofUrl: { type: String },
+    paymentSubmittedAt: { type: Date }, // when the customer marked payment as sent
 
     orderStatus: {
       type: String,
-      enum: ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'completed', 'cancelled'],
+      enum: ['pending', 'awaiting_payment', 'preparing', 'out_for_delivery', 'completed', 'cancelled'],
       default: 'pending',
     },
 
-    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // which admin approved/rejected
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // admin who stamped/rejected the order itself
     reviewedAt: { type: Date },
+    paymentReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // admin who confirmed/rejected the payment
+    paymentReviewedAt: { type: Date },
     rejectionReason: { type: String },
 
     // Delivery / supplier tracking

@@ -5,8 +5,8 @@
 // same per-user socket room the order-detail page uses.
 
 const STATUS_META = {
-  pending: { icon: 'fa-hourglass-half', variant: '', title: 'Order received', text: (o) => `Order #${orderLabel(o)} is awaiting confirmation.` },
-  confirmed: { icon: 'fa-circle-check', variant: 'notif-success', title: 'Order confirmed', text: (o) => `Order #${orderLabel(o)} has been confirmed.` },
+  pending: { icon: 'fa-hourglass-half', variant: '', title: 'Order received', text: (o) => `Order #${orderLabel(o)} is awaiting review.` },
+  awaiting_payment: { icon: 'fa-circle-check', variant: 'notif-success', title: 'Order approved', text: (o) => `Order #${orderLabel(o)} was approved — you can pay now.` },
   preparing: { icon: 'fa-fire-burner', variant: '', title: 'Preparing your food', text: (o) => `Order #${orderLabel(o)} is being prepared in the kitchen.` },
   out_for_delivery: { icon: 'fa-motorcycle', variant: '', title: 'Out for delivery', text: (o) => `Order #${orderLabel(o)} is on its way to you.` },
   completed: { icon: 'fa-box-open', variant: 'notif-success', title: 'Delivered', text: (o) => `Order #${orderLabel(o)} was delivered. Enjoy!` },
@@ -61,6 +61,15 @@ function buildItems(user, orders) {
         variant: 'notif-danger',
         title: 'Payment not approved',
         sub: `We couldn't confirm payment for order #${orderLabel(o)}.${o.rejectionReason ? ' ' + o.rejectionReason : ''}`,
+        date: o.paymentReviewedAt || o.updatedAt,
+        link: `order.html?id=${o._id}`,
+      });
+    } else if (o.reviewStatus === 'rejected') {
+      items.push({
+        icon: 'fa-triangle-exclamation',
+        variant: 'notif-danger',
+        title: 'Order not accepted',
+        sub: `Order #${orderLabel(o)} could not be accepted.${o.rejectionReason ? ' ' + o.rejectionReason : ''}`,
         date: o.reviewedAt || o.updatedAt,
         link: `order.html?id=${o._id}`,
       });

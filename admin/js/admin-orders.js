@@ -1,9 +1,21 @@
-// Logic for the admin orders/payment-approval page
+// Logic for the admin orders/review/payment-approval page
 
-let currentFilter = 'pending';
+let currentFilter = 'review_pending';
 let searchTerm = '';
 let searchDebounce = null;
 let suppliers = [];
+
+// Maps a dropdown value to the query params getAllOrders understands.
+const FILTER_PARAMS = {
+  review_pending: { reviewStatus: 'pending' },
+  awaiting_payment: { paymentStatus: 'awaiting_payment' },
+  proof_submitted: { paymentStatus: 'proof_submitted' },
+  preparing: { orderStatus: 'preparing' },
+  out_for_delivery: { orderStatus: 'out_for_delivery' },
+  completed: { orderStatus: 'completed' },
+  cancelled: { orderStatus: 'cancelled' },
+  '': {},
+};
 
 async function loadOrders() {
   const admin = await requireAdmin();
@@ -35,7 +47,7 @@ async function loadOrders() {
 
 const DELIVERY_LABEL = {
   pending: null,
-  confirmed: null,
+  awaiting_payment: null,
   preparing: { label: 'Preparing', icon: 'fa-fire-burner', cls: 'badge-pending' },
   out_for_delivery: { label: 'Out for delivery', icon: 'fa-motorcycle', cls: 'badge-approved' },
   completed: { label: 'Delivered', icon: 'fa-circle-check', cls: 'badge-approved' },
@@ -57,12 +69,62 @@ function renderChowdeckLine(o) {
     </p>`;
 }
 
+// The review/payment status badges shown at the top-right of each card —
+// these are the two admin gates, distinct from the delivery-progress badge.
+function renderGateBadges(o) {
+  const badges = [];
+
+  if (o.reviewStatus === 'pending') {
+    badges.push(`<span class="badge badge-pending"><i class="fa-solid fa-hourglass-half"></i> Awaiting review</span>`);
+  } else if (o.reviewStatus === 'rejected') {
+    badges.push(`<span class="badge badge-rejected"><i class="fa-solid fa-xmark"></i> Order rejected</span>`);
+  } else if (o.paymentMethod === 'pay_on_delivery') {
+    badges.push(`<span class="badge badge-approved"><i class="fa-solid fa-hand-holding-dollar"></i> Pay on delivery</span>`);
+  } else if (o.paymentStatus === 'awaiting_payment') {
+    badges.push(`<span class="badge badge-pending"><i class="fa-regular fa-clock"></i> Waiting for customer to pay</span>`);
+  } else if (o.paymentStatus === 'proof_submitted') {
+    badges.push(`<span class="badge badge-pending"><i class="fa-solid fa-receipt"></i> Proof submitted</span>`);
+  } else if (o.paymentStatus === 'rejected') {
+    badges.push(`<span class="badge badge-rejected"><i class="fa-solid fa-xmark"></i> Payment rejected</span>`);
+  } else if (o.paymentStatus === 'approved') {
+    badges.push(`<span class="badge badge-approved"><i class="fa-solid fa-check"></i> Payment confirmed</span>`);
+  }
+  return badges.join(' ');
+}
+
+function renderActions(o) {
+  const buttons = [];
+
+  if (o.reviewStatus === 'pending') {
+    buttons.push(`<button class="btn btn-primary btn-sm review-approve-btn" data-id="${o._id}"><i class="fa-solid fa-stamp"></i> Approve order</button>`);
+    buttons.push(`<button class="btn btn-danger btn-sm reject-btn" data-id="${o._id}"><i class="fa-solid fa-xmark"></i> Reject</button>`);
+  } else if (o.reviewStatus === 'approved' && o.paymentMethod === 'bank_transfer') {
+    if (o.paymentStatus === 'proof_submitted' || o.paymentStatus === 'rejected') {
+      buttons.push(`<button class="btn btn-primary btn-sm approve-btn" data-id="${o._id}"><i class="fa-solid fa-check"></i> Confirm payment</button>`);
+      buttons.push(`<button class="btn btn-danger btn-sm reject-btn" data-id="${o._id}"><i class="fa-solid fa-xmark"></i> Reject payment</button>`);
+    }
+  }
+
+  buttons.push(`<button class="btn btn-ghost btn-sm adjust-btn" data-id="${o._id}" data-total="${o.totalAmount}"><i class="fa-solid fa-pen"></i> Adjust price</button>`);
+
+  if (o.orderStatus === 'preparing' && !o.assignedSupplier && o.delivery?.mode !== 'CHOWDECK_RELAY') {
+    buttons.push(`<button class="btn btn-ghost btn-sm assign-btn" data-id="${o._id}"><i class="fa-solid fa-motorcycle"></i> Assign rider</button>`);
+  }
+  if (o.assignedSupplier && o.orderStatus === 'preparing') {
+    buttons.push(`<button class="btn btn-ghost btn-sm dispatch-btn" data-id="${o._id}"><i class="fa-solid fa-truck-fast"></i> Dispatch</button>`);
+  }
+  buttons.push(`<a class="btn btn-ghost btn-sm" href="support.html?userId=${o.user?._id || ''}"><i class="fa-regular fa-comment-dots"></i> Message customer</a>`);
+
+  return buttons.join('');
+}
+
 async function fetchAndRender() {
   const list = document.getElementById('orders-list');
   list.innerHTML = `<p class="helper-text">Loading…</p>`;
 
   const params = new URLSearchParams();
-  if (currentFilter) params.set('paymentStatus', currentFilter);
+  const filterParams = FILTER_PARAMS[currentFilter] || {};
+  Object.entries(filterParams).forEach(([k, v]) => params.set(k, v));
   if (searchTerm) params.set('orderNumber', searchTerm);
 
   const data = await api.get(`/admin/orders?${params.toString()}`);
@@ -97,43 +159,55 @@ async function fetchAndRender() {
       </div>
 
       ${o.notes ? `<p style="font-size:13px; margin:0 0 10px; padding:8px 10px; background:rgba(255,138,61,0.08); border-radius:8px;"><strong>Customer note:</strong> ${o.notes}</p>` : ''}
-      ${o.paymentReference ? `<p style="font-size:13px; margin:0 0 10px;"><strong>Transfer ref:</strong> ${o.paymentReference}</p>` : ''}
       ${o.deliveryAddress ? `<p style="font-size:13px; margin:0 0 10px;"><strong>Delivery:</strong> ${o.deliveryAddress}</p>` : ''}
       ${wasAdjusted && o.priceAdjustmentReason ? `<p class="helper-text" style="font-size:12px; margin:0 0 10px;">Adjusted because: ${o.priceAdjustmentReason}</p>` : ''}
       ${o.assignedSupplierName ? `<p class="helper-text" style="font-size:12px; margin:0 0 10px;"><i class="fa-solid fa-motorcycle"></i> Rider: ${o.assignedSupplierName}</p>` : ''}
+      ${(o.rejectionReason && (o.reviewStatus === 'rejected' || o.paymentStatus === 'rejected')) ? `<p style="font-size:13px; margin:0 0 10px; padding:8px 10px; background:rgba(224,90,90,0.1); border-radius:8px;"><strong>Rejection reason:</strong> ${o.rejectionReason}</p>` : ''}
+      ${o.paymentProofUrl ? `<a href="${o.paymentProofUrl}" target="_blank" rel="noopener" style="display:block; margin-bottom:10px;"><img src="${o.paymentProofUrl}" alt="Payment proof" style="max-width:160px; border-radius:10px; border:1px solid var(--glass-border);" /></a>` : ''}
       ${renderChowdeckLine(o)}
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        ${o.paymentStatus === 'pending' ? `
-          <button class="btn btn-primary btn-sm approve-btn" data-id="${o._id}"><i class="fa-solid fa-check"></i> Approve payment</button>
-          <button class="btn btn-danger btn-sm reject-btn" data-id="${o._id}"><i class="fa-solid fa-xmark"></i> Reject</button>
-        ` : `<span class="badge ${o.paymentStatus === 'approved' ? 'badge-approved' : 'badge-rejected'}">${o.paymentStatus}</span>`}
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        ${renderGateBadges(o)}
         ${delivery ? `<span class="badge ${delivery.cls}"><i class="fa-solid ${delivery.icon}"></i> ${delivery.label}</span>` : ''}
         ${o.delivery?.mode === 'CHOWDECK_RELAY'
           ? `<span class="badge badge-pending"><i class="fa-solid fa-truck-fast"></i> Chowdeck Relay${o.delivery.fee ? ` · ${currency(o.delivery.fee)}` : ''}</span>`
           : `<span class="badge badge-approved"><i class="fa-solid fa-shop"></i> In-house</span>`}
-        <button class="btn btn-ghost btn-sm adjust-btn" data-id="${o._id}" data-total="${o.totalAmount}"><i class="fa-solid fa-pen"></i> Adjust price</button>
-        ${o.paymentStatus === 'approved' && !o.assignedSupplier && o.delivery?.mode !== 'CHOWDECK_RELAY' ? `<button class="btn btn-ghost btn-sm assign-btn" data-id="${o._id}"><i class="fa-solid fa-motorcycle"></i> Assign rider</button>` : ''}
-        ${o.assignedSupplier && o.orderStatus === 'preparing' ? `<button class="btn btn-ghost btn-sm dispatch-btn" data-id="${o._id}"><i class="fa-solid fa-truck-fast"></i> Dispatch</button>` : ''}
-        <a class="btn btn-ghost btn-sm" href="support.html?userId=${o.user?._id || ''}"><i class="fa-regular fa-comment-dots"></i> Message customer</a>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        ${renderActions(o)}
       </div>
     </div>
   `;
   }).join('');
+
+  list.querySelectorAll('.review-approve-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await api.patch(`/admin/orders/${btn.dataset.id}/review-approve`, {});
+        Sound.orderApproved();
+        UI.toast('Order approved — customer notified', { type: 'success' });
+      } catch (err) {
+        UI.toast(err.message, { type: 'danger' });
+      }
+      fetchAndRender();
+    });
+  });
 
   list.querySelectorAll('.approve-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       btn.disabled = true;
       await api.patch(`/admin/orders/${btn.dataset.id}/approve`, {});
       Sound.orderApproved();
-      UI.toast('Payment approved — customer notified', { type: 'success' });
+      UI.toast('Payment confirmed — order is now preparing', { type: 'success' });
       fetchAndRender();
     });
   });
 
   list.querySelectorAll('.reject-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      const reason = await UI.prompt('Reason for rejecting this order (optional):', { title: 'Reject order', confirmText: 'Reject' });
+      const reason = await UI.prompt('Reason for rejecting (shown to the customer):', { title: 'Reject', confirmText: 'Reject' });
       if (reason === null) return;
       btn.disabled = true;
       await api.patch(`/admin/orders/${btn.dataset.id}/reject`, { reason });

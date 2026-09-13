@@ -504,7 +504,7 @@ img {
   display: flex;
   gap: 14px;
   overflow-x: auto;
-  padding: 4px 20px 6px;
+  padding: 4px 20px 10px;
   scroll-snap-type: x mandatory;
 }
 
@@ -512,12 +512,66 @@ img {
   position: relative;
   flex: 0 0 auto;
   width: 280px;
-  height: 140px;
+  height: 148px;
   overflow: hidden;
   scroll-snap-align: start;
   display: flex;
   align-items: center;
   padding: 18px 18px 18px 8px;
+  border-radius: var(--radius-lg);
+  isolation: isolate;
+  background:
+    radial-gradient(120% 140% at 100% 100%, rgba(255, 106, 26, 0.22), transparent 60%),
+    var(--glass-strong);
+  animation: bannerFloatIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+/* Slow-rotating conic-gradient ring, clipped to a 1.5px border by the mask,
+   for a continuous "premium foil" shimmer around each banner. */
+.banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, var(--orange), transparent 30%, transparent 60%, var(--orange-soft), var(--orange));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: bannerRingSpin 6s linear infinite;
+  opacity: 0.85;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Soft glow blob drifting behind the artwork - gives the card a "breathing",
+   alive feeling even when nothing else on the page is moving. */
+.banner::after {
+  content: '';
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  right: -30px;
+  bottom: -40px;
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.35), transparent 70%);
+  filter: blur(6px);
+  animation: bannerGlowDrift 5s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes bannerFloatIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bannerRingSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bannerGlowDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(-10px, -8px) scale(1.15); opacity: 1; }
 }
 
 .banner-copy {
@@ -536,6 +590,15 @@ img {
   color: var(--orange-soft);
 }
 
+.banner-tag i {
+  animation: bannerFlicker 1.8s ease-in-out infinite;
+}
+
+@keyframes bannerFlicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.92); }
+}
+
 .banner-title {
   font-size: 16px;
   line-height: 1.2;
@@ -546,6 +609,7 @@ img {
 }
 
 .banner-cta {
+  position: relative;
   margin-top: 4px;
   align-self: flex-start;
   padding: 8px 16px;
@@ -554,6 +618,12 @@ img {
   font-weight: 700;
   background: linear-gradient(135deg, var(--orange), var(--orange-2));
   color: #1b1108;
+  animation: bannerCtaPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes bannerCtaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 138, 61, 0.55); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 138, 61, 0); }
 }
 
 .banner-img {
@@ -564,6 +634,69 @@ img {
   height: 130%;
   object-fit: contain;
   z-index: 1;
+  animation: bannerImgDrift 6s ease-in-out infinite;
+  transform-origin: 70% 60%;
+}
+
+@keyframes bannerImgDrift {
+  0%, 100% { transform: scale(1) rotate(0deg) translateY(0); }
+  50% { transform: scale(1.06) rotate(-1.5deg) translateY(-4px); }
+}
+
+/* A soft diagonal light streak that sweeps across the banner every few
+   seconds - the "continuous animation" flourish, layered on top of
+   everything else, purely decorative and never blocking taps. */
+.banner .banner-copy::after {
+  content: none;
+}
+
+.banner-strip .banner:nth-child(1) { animation-delay: 0s, 0s, 0s; }
+.banner-strip .banner:nth-child(2)::before,
+.banner-strip .banner:nth-child(2)::after { animation-delay: -2s; }
+.banner-strip .banner:nth-child(3)::before,
+.banner-strip .banner:nth-child(3)::after { animation-delay: -4s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .banner, .banner::before, .banner::after, .banner-img, .banner-cta, .banner-tag i {
+    animation: none !important;
+  }
+}
+
+.address-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.address-choice input[type="radio"] {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--orange);
+  flex: 0 0 auto;
+}
+
+.address-choice-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.address-choice.selected {
+  border-color: rgba(255, 138, 61, 0.5);
+  background: rgba(255, 138, 61, 0.08);
+}
+
+.address-choice.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .section-row {

@@ -21,11 +21,12 @@ exports.getMarketplacePayout = (req, res) => {
   }
 };
 
-// GET /api/admin/orders?status=pending&orderNumber=MT-260902-8F3K1A
+// GET /api/admin/orders?reviewStatus=pending&paymentStatus=&orderStatus=&orderNumber=MT-260902-8F3K1A
 exports.getAllOrders = async (req, res, next) => {
   try {
-    const { paymentStatus, orderStatus, orderNumber } = req.query;
+    const { reviewStatus, paymentStatus, orderStatus, orderNumber } = req.query;
     const filter = {};
+    if (reviewStatus) filter.reviewStatus = reviewStatus;
     if (paymentStatus) filter.paymentStatus = paymentStatus;
     if (orderStatus) filter.orderStatus = orderStatus;
     // Partial, case-insensitive match so the admin can paste in whatever the
@@ -50,18 +51,68 @@ exports.getAllOrders = async (req, res, next) => {
   }
 };
 
+// PATCH /api/admin/orders/:id/review-approve  { }
+// The FIRST stamp: admin has looked at the order (and adjusted the price via
+// adjustOrderPrice below, if needed) and approved it. No account number or
+// "preparing" status is ever shown to the customer before this fires.
+//  - bank_transfer orders move to "awaiting_payment" — the customer now sees
+//    the bank details and can pay (and optionally upload a screenshot).
+//  - pay_on_delivery orders (only ever offered for nearby/IN_HOUSE addresses)
+//    skip the payment screen entirely and go straight to "preparing" — this
+//    stamp IS the admin's required sign-off on letting them pay on arrival.
+exports.reviewApproveOrder = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('user', 'name phone email');
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    if (order.reviewStatus === 'approved') {
+      return res.status(400).json({ message: 'This order has already been approved.' });
+    }
+
+    order.reviewStatus = 'approved';
+    order.reviewedBy = req.user._id;
+    order.reviewedAt = new Date();
+
+    if (order.paymentMethod === 'pay_on_delivery') {
+      order.paymentStatus = 'not_required';
+      order.orderStatus = 'preparing';
+    } else {
+      order.paymentStatus = 'awaiting_payment';
+      order.orderStatus = 'awaiting_payment';
+    }
+
+    await order.save();
+
+    getIO().to(`user:${order.user._id}`).emit('order:statusChanged', order);
+    getIO().to('admins').emit('order:updated', order);
+    sendPushToUser(order.user._id, {
+      title: `Order #${order.orderNumber} approved`,
+      body: order.paymentMethod === 'pay_on_delivery'
+        ? 'Your order was approved and is now being prepared. Pay when it arrives.'
+        : 'Your order was approved — open the app to complete payment.',
+      url: `/order.html?id=${order._id}`,
+      tag: `order-${order._id}`,
+    }).catch((err) => console.error('[reviewApproveOrder] push failed:', err.message));
+
+    res.json({ order });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // PATCH /api/admin/orders/:id/approve
-// This is the ONLY action that flips paymentStatus to "approved" -
-// that's what the customer's app treats as "order successful".
+// The SECOND stamp, for bank_transfer orders only: confirms the money the
+// customer said they sent (paymentStatus was "proof_submitted") actually
+// landed. This is the ONLY action that flips paymentStatus to "approved" and
+// moves the order into "preparing" for that flow.
 exports.approvePayment = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id).populate('user', 'name phone email');
     if (!order) return res.status(404).json({ message: 'Order not found.' });
 
     order.paymentStatus = 'approved';
-    order.orderStatus = 'confirmed';
-    order.reviewedBy = req.user._id;
-    order.reviewedAt = new Date();
+    order.orderStatus = 'preparing';
+    order.paymentReviewedBy = req.user._id;
+    order.paymentReviewedAt = new Date();
 
     // --- Scenario B trigger point ---
     // Per spec: only once the customer has actually paid do we summon the
@@ -115,16 +166,26 @@ exports.approvePayment = async (req, res, next) => {
 };
 
 // PATCH /api/admin/orders/:id/reject  { reason }
+// Works at either gate: rejecting a not-yet-reviewed order (bad/impossible
+// order) or rejecting a submitted payment proof that couldn't be verified.
+// Either way the order is cancelled and the customer sees the reason.
 exports.rejectPayment = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
 
-    order.paymentStatus = 'rejected';
+    const rejectingPayment = order.reviewStatus === 'approved';
+    if (rejectingPayment) {
+      order.paymentStatus = 'rejected';
+      order.paymentReviewedBy = req.user._id;
+      order.paymentReviewedAt = new Date();
+    } else {
+      order.reviewStatus = 'rejected';
+      order.reviewedBy = req.user._id;
+      order.reviewedAt = new Date();
+    }
     order.orderStatus = 'cancelled';
-    order.reviewedBy = req.user._id;
-    order.reviewedAt = new Date();
-    order.rejectionReason = req.body.reason || 'Payment could not be verified.';
+    order.rejectionReason = req.body.reason || (rejectingPayment ? 'Payment could not be verified.' : 'This order could not be accepted.');
     await order.save();
 
     getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
@@ -202,7 +263,10 @@ exports.getUsersOverview = async (req, res, next) => {
           _id: '$user',
           totalOrders: { $sum: 1 },
           totalSpent: {
-            $sum: { $cond: [{ $eq: ['$paymentStatus', 'approved'] }, '$totalAmount', 0] },
+            // Confirmed bank-transfer payments AND approved pay-on-delivery
+            // orders both count as real revenue for this customer — only
+            // still-pending/rejected orders are excluded.
+            $sum: { $cond: [{ $in: ['$paymentStatus', ['approved', 'not_required']] }, '$totalAmount', 0] },
           },
         },
       },
@@ -322,7 +386,7 @@ exports.assignSupplier = async (req, res, next) => {
     if (!order) return res.status(404).json({ message: 'Order not found.' });
 
     order.assignedSupplier = supplier._id;
-    if (order.orderStatus === 'confirmed') order.orderStatus = 'preparing';
+    if (order.orderStatus === 'awaiting_payment') order.orderStatus = 'preparing';
     await order.save();
 
     getIO().to(`user:${supplier._id}`).emit('order:assigned', order);

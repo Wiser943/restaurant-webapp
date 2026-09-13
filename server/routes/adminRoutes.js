@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, adminOnly } = require('../middleware/auth');
 const {
   getAllOrders,
+  reviewApproveOrder,
   approvePayment,
   rejectPayment,
   updateOrderStatus,
@@ -28,6 +29,7 @@ router.use(protect, adminOnly); // everything below requires an admin session
 
 // Order review / payment approval
 router.get('/orders', getAllOrders);
+router.patch('/orders/:id/review-approve', reviewApproveOrder);
 router.patch('/orders/:id/approve', approvePayment);
 router.patch('/orders/:id/reject', rejectPayment);
 router.patch('/orders/:id/status', updateOrderStatus);

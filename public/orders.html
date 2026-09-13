@@ -41,11 +41,19 @@
     return;
   }
 
-      const statusMap = { pending: ['badge-pending', 'Awaiting approval'], approved: ['badge-approved', 'Confirmed'], rejected: ['badge-rejected', 'Rejected'] };
-      const deliveryMap = { out_for_delivery: ['badge-approved', 'fa-motorcycle', 'Out for delivery'], completed: ['badge-approved', 'fa-circle-check', 'Delivered'] };
+      const deliveryMap = { preparing: ['badge-pending', 'fa-fire-burner', 'Preparing'], out_for_delivery: ['badge-approved', 'fa-motorcycle', 'Out for delivery'], completed: ['badge-approved', 'fa-circle-check', 'Delivered'] };
+
+      function orderBadge(o) {
+        if (o.reviewStatus === 'pending') return ['badge-pending', 'Awaiting review'];
+        if (o.reviewStatus === 'rejected') return ['badge-rejected', 'Rejected'];
+        if (o.paymentStatus === 'awaiting_payment') return ['badge-pending', 'Pay now'];
+        if (o.paymentStatus === 'proof_submitted') return ['badge-pending', 'Confirming payment'];
+        if (o.paymentStatus === 'rejected') return ['badge-rejected', 'Payment rejected'];
+        return ['badge-approved', 'Confirmed'];
+      }
 
       container.innerHTML = orders.map((o) => {
-        const [cls, label] = statusMap[o.paymentStatus] || statusMap.pending;
+        const [cls, label] = orderBadge(o);
         const delivery = deliveryMap[o.orderStatus];
         return `
           <a href="order.html?id=${o._id}" class="card order-list-row">

@@ -21,12 +21,32 @@ async function uniqueOrderNumber() {
 
 // POST /api/orders
 // Creates an order from the user's current cart (or a directly-passed item list).
-// Always starts as paymentStatus: "pending" — the frontend must NOT show
-// "order successful" until it receives an order:statusChanged event (or polls)
-// showing paymentStatus === "approved".
+// Nothing payment-related is shown to the customer at this point — no
+// account number, no "pay now" screen. The order just goes to the admin for
+// review (reviewStatus: "pending"); the customer only sees a payment screen
+// (or lands straight in "preparing", for pay-on-delivery) once an admin has
+// stamped it via PATCH /admin/orders/:id/review-approve.
 exports.placeOrder = async (req, res, next) => {
   try {
-    const { deliveryAddress, notes, paymentReference, paymentMethod, customerLocation } = req.body;
+    const { addressId, deliveryAddress: manualAddress, notes, paymentMethod, customerLocation } = req.body;
+
+    // Address must come from the customer's saved profile addresses (max 2,
+    // managed on the Addresses page) — resolved here, never trusted as raw
+    // freeform text from the checkout form itself.
+    let deliveryAddress = null;
+    if (addressId) {
+      const saved = req.user.addresses?.id ? req.user.addresses.id(addressId) : req.user.addresses?.find((a) => String(a._id) === String(addressId));
+      if (!saved) return res.status(400).json({ message: 'That saved address could not be found. Please pick another.' });
+      deliveryAddress = saved.address;
+    } else if (manualAddress && manualAddress.trim().split(/\s+/).filter(Boolean).length >= 4) {
+      // Fallback: a manually-typed address (e.g. the geolocation tool failed
+      // while adding one to the profile) — still requires a minimum of 4 words.
+      deliveryAddress = manualAddress.trim();
+    } else {
+      return res.status(400).json({ message: 'Please choose a saved delivery address, or add one first.' });
+    }
+
+    const chosenPaymentMethod = paymentMethod === 'pay_on_delivery' ? 'pay_on_delivery' : 'bank_transfer';
 
     const cart = await Cart.findOne({ user: req.user._id }).populate('items.menuItem');
     if (!cart || cart.items.length === 0) {
@@ -94,6 +114,14 @@ exports.placeOrder = async (req, res, next) => {
     // added straight onto what the customer is asked to pay.
     totalAmount += delivery.fee;
 
+    // "Pay after delivery" is only ever offered when the customer is close
+    // enough for our own in-house delivery — never on a Chowdeck Relay order,
+    // where a third-party rider fare is already on the line. Enforced here
+    // server-side, not just hidden in the UI.
+    if (chosenPaymentMethod === 'pay_on_delivery' && delivery.mode !== 'IN_HOUSE') {
+      return res.status(400).json({ message: 'Pay after delivery is only available for nearby addresses. Please pay by bank transfer instead.' });
+    }
+
     const orderNumber = await uniqueOrderNumber();
 
     const order = await Order.create({
@@ -102,11 +130,11 @@ exports.placeOrder = async (req, res, next) => {
       items: orderItems,
       totalAmount,
       originalTotalAmount: totalAmount,
-      paymentReference,
-      paymentMethod,
+      paymentMethod: chosenPaymentMethod,
       deliveryAddress,
       notes,
       delivery,
+      reviewStatus: 'pending',
       paymentStatus: 'pending',
       orderStatus: 'pending',
     });
@@ -126,7 +154,42 @@ exports.placeOrder = async (req, res, next) => {
       tag: 'new-order',
     }).catch((err) => console.error('[placeOrder] push failed:', err.message));
 
-    res.status(201).json({ order, message: 'Order submitted. Awaiting payment approval.' });
+    res.status(201).json({ order, message: 'Order submitted for review.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/orders/:id/payment-proof  { screenshotUrl? }
+// Called once the customer has been shown the account details (i.e. after
+// an admin has stamped the order and paymentStatus is "awaiting_payment")
+// and says they've sent the transfer. The screenshot itself is uploaded
+// client-side straight to ImgBB — we only ever store the resulting URL, and
+// it's optional ("proof is optional" per spec), so this still works if
+// screenshotUrl is omitted.
+exports.submitPaymentProof = async (req, res, next) => {
+  try {
+    const { screenshotUrl } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this order.' });
+    }
+    if (order.paymentMethod !== 'bank_transfer') {
+      return res.status(400).json({ message: 'This order does not need a payment proof.' });
+    }
+    if (order.reviewStatus !== 'approved') {
+      return res.status(400).json({ message: 'This order has not been approved yet — please wait for confirmation first.' });
+    }
+
+    if (screenshotUrl) order.paymentProofUrl = screenshotUrl;
+    order.paymentStatus = 'proof_submitted';
+    order.paymentSubmittedAt = new Date();
+    await order.save();
+
+    getIO().to('admins').emit('order:updated', order);
+
+    res.json({ order, message: "Thanks — we'll confirm your payment shortly." });
   } catch (err) {
     next(err);
   }
