@@ -1852,15 +1852,28 @@ img {
   opacity: 1;
 }
 
-.onboard-skip {
-  align-self: flex-end;
+.onboard-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
   margin: 18px 20px 0;
+}
+
+.onboard-skip {
   background: none;
   border: none;
   color: var(--ink-muted);
   font-size: 13px;
   font-family: var(--font-mono);
   cursor: pointer;
+}
+
+.onboard-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .onboard-track {

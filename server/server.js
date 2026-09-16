@@ -7,6 +7,7 @@ const http = require('http');
 const cookieParser = require('cookie-parser');
 
 const connectDB = require('./config/db');
+const checkEnv = require('./config/checkEnv');
 const { initSocket } = require('./config/socket');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
@@ -29,6 +30,11 @@ const server = http.createServer(app);
 
 connectDB();
 initSocket(server, process.env.CLIENT_URL);
+
+// Print (and remember) which .env values are missing, so a forgotten
+// CHOWDECK_API_KEY or VAPID key shows up in the logs at boot instead of
+// only surfacing later as a checkout/push failure. See config/checkEnv.js.
+const envStatus = checkEnv();
 
 // --- Custom CORS & Preflight Middleware for Vercel Serverless ---
 app.use((req, res, next) => {
@@ -80,7 +86,7 @@ app.use('/api/contact-info', contactInfoRoutes);
 app.use('/api/supplier', supplierRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/push', pushRoutes);
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', env: envStatus }));
 
 // ---- Static File Serving ----
 app.use(express.static(path.join(__dirname, '..', 'public')));
