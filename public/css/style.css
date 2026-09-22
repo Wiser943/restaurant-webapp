@@ -409,9 +409,12 @@ img {
   font-family: inherit;
   color: var(--ink);
 }
-.theme-icon-light { display: none; }
-[data-theme="light"] .theme-icon-dark { display: none; }
-[data-theme="light"] .theme-icon-light { display: inline; }
+/* !important: Font Awesome's own .fa-solid rule loads after this
+   stylesheet and ties on specificity, so without it FA silently wins
+   and both icons render at once instead of only one. */
+.theme-icon-light { display: none !important; }
+[data-theme="light"] .theme-icon-dark { display: none !important; }
+[data-theme="light"] .theme-icon-light { display: inline !important; }
 
 .tabbar {
   position: fixed;
@@ -1551,6 +1554,11 @@ img {
   padding: 26px 22px 20px;
   text-align: center;
   box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+  /* Give the modal its own opaque, theme-aware surface. It previously
+     relied only on .glass-strong (a subtle tint meant to sit on the
+     app's own background) while floating over a permanently-dark
+     scrim, so in light mode the card came out muddy and low-contrast. */
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
 }
 .ui-modal-icon {
   width: 52px; height: 52px; border-radius: 50%;
