@@ -26,6 +26,10 @@ function renderSupplierNav(user) {
     <div class="topbar">
       <span class="brand-name display"><i class="fa-solid fa-motorcycle"></i>Vc Kitchen</span>
       <div class="topbar-actions">
+        <button type="button" class="profile-icon-btn theme-toggle-btn" data-theme-toggle style="width:36px;height:36px;" aria-label="Toggle dark / light theme">
+          <i class="fa-solid fa-moon theme-icon-dark"></i>
+          <i class="fa-solid fa-sun theme-icon-light"></i>
+        </button>
         <a href="profile.html" class="profile-icon-btn" style="width:36px;height:36px;" aria-label="My profile"><i class="fa-solid fa-user"></i></a>
       </div>
     </div>

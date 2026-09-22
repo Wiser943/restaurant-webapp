@@ -28,6 +28,10 @@ function renderAdminNav(user) {
     <div class="topbar">
       <a href="index.html" class="brand-name display">VC Kitchen</a>
       <div class="topbar-actions">
+        <button type="button" class="profile-icon-btn theme-toggle-btn" data-theme-toggle style="width:36px;height:36px;" aria-label="Toggle dark / light theme">
+          <i class="fa-solid fa-moon theme-icon-dark"></i>
+          <i class="fa-solid fa-sun theme-icon-light"></i>
+        </button>
         <a href="profile.html" class="profile-icon-btn" style="width:36px;height:36px;" aria-label="Admin profile"><i class="fa-solid fa-user"></i></a>
       </div>
     </div>

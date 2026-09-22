@@ -3,6 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    // Apply the saved theme before first paint, so there's no flash of the
+    // wrong theme. Full toggle logic lives in /js/theme.js.
+    (function () {
+      try {
+        if (localStorage.getItem('vck_theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <title>Item — VC Kitchen</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#16120e" />
@@ -11,6 +22,7 @@
 </head>
 <body>
   <script src="/js/ui.js"></script>
+  <script src="/js/theme.js"></script>
   <div class="detail-page">
     <button class="icon-btn back-btn glass-circle" onclick="history.back()" aria-label="Go back">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="#f6efe4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>

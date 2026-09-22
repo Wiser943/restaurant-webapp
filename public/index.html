@@ -3,6 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script>
+    // Apply the saved theme before first paint, so there's no flash of the
+    // wrong theme. Full toggle logic lives in /js/theme.js.
+    (function () {
+      try {
+        if (localStorage.getItem('vck_theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <title>VC Kitchen</title>
   <script>
     // A true first-ever visit (fresh browser, or the very first time the
@@ -26,6 +37,7 @@
 </head>
 <body>
   <script src="/js/ui.js"></script>
+  <script src="/js/theme.js"></script>
   <div id="topbar"></div>
 
   <!-- Greeting header -->

@@ -3,6 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    // Apply the saved theme before first paint, so there's no flash of the
+    // wrong theme. Full toggle logic lives in /js/theme.js.
+    (function () {
+      try {
+        if (localStorage.getItem('vck_theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <title>Admin · Settings — VC Kitchen</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="/css/profile.css" />
@@ -10,9 +21,10 @@
 </head>
 <body style="padding-bottom: 40px;">
   <script src="/js/ui.js"></script>
+  <script src="/js/theme.js"></script>
   <div id="admin-nav"></div>
 
-  <div class="container" style="padding-top: 12px; max-width: 560px;">
+  <div class="container" data-w="sm" style="padding-top: 12px; max-width: 560px;">
     <h1 class="display" style="margin-bottom:16px;">Bank account details</h1>
     <p class="helper-text" style="margin-bottom:16px;">This is what customers see at checkout, telling them where to send payment.</p>
 

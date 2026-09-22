@@ -3,6 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    // Apply the saved theme before first paint, so there's no flash of the
+    // wrong theme. Full toggle logic lives in /js/theme.js.
+    (function () {
+      try {
+        if (localStorage.getItem('vck_theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <title>Admin · Orders — VC Kitchen</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="/css/profile.css" />
@@ -10,13 +21,14 @@
 </head>
 <body style="padding-bottom: 40px;">
   <script src="/js/ui.js"></script>
+  <script src="/js/theme.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>
     eruda.init();
   </script>
   <div id="admin-nav"></div>
 
-  <div class="container" style="padding-top: 12px; max-width: 720px;">
+  <div class="container" data-w="md" style="padding-top: 12px; max-width: 720px;">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
       <h1 class="display" style="margin:0;">Orders</h1>
       <select id="filter-select" class="btn btn-small btn-ghost" style="margin:0; width:auto;appearance: none;-webkit-appearance: none;-moz-appearance: none;">

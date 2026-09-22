@@ -119,7 +119,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #2a2118, #1c1712);
+  background: linear-gradient(135deg, var(--photo-bg-1), var(--photo-bg-2));
   border: 1px solid var(--glass-border);
   color: var(--orange-soft);
   font-family: var(--font-display);

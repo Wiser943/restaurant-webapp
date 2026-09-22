@@ -91,7 +91,17 @@ async function renderNav() {
         </button>
         <a href="index.html" class="brand-name display">VC Kitchen</a>
       </div>
+      <nav class="topbar-nav-links">
+        ${TABS.map((tab) => {
+          const active = tab.match.includes(currentPage());
+          return `<a href="${tab.href}" class="${active ? 'active' : ''}">${tab.label}</a>`;
+        }).join('')}
+      </nav>
       <div class="topbar-actions">
+        <button type="button" class="glass-circle theme-toggle-btn" data-theme-toggle style="width:36px;height:36px;" aria-label="Toggle dark / light theme">
+          <i class="fa-solid fa-moon theme-icon-dark"></i>
+          <i class="fa-solid fa-sun theme-icon-light"></i>
+        </button>
         ${user?.role === 'admin' ? '<a href="/admin" class="btn btn-ghost btn-sm">Admin</a>' : ''}
         ${user ? '' : '<a href="login.html" class="btn btn-primary btn-sm">Log in</a>'}
       </div>

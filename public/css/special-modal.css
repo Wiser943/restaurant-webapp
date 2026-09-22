@@ -106,7 +106,7 @@
   height: 340px;
   border-radius: 28px 28px 0 0;
   overflow: hidden;
-  background: linear-gradient(135deg, #2a1d12, #1c1712);
+  background: linear-gradient(135deg, var(--photo-bg-1), var(--photo-bg-2));
 }
 @media (max-height: 700px) {
   .special-media { height: 280px; }

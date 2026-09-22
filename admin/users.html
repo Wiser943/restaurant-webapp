@@ -3,6 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    // Apply the saved theme before first paint, so there's no flash of the
+    // wrong theme. Full toggle logic lives in /js/theme.js.
+    (function () {
+      try {
+        if (localStorage.getItem('vck_theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   <title>Admin · Users — VC Kitchen</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="/css/profile.css" />
@@ -11,9 +22,10 @@
 </head>
 <body style="padding-bottom: 40px;">
   <script src="/js/ui.js"></script>
+  <script src="/js/theme.js"></script>
   <div id="admin-nav"></div>
 
-  <div class="container users-page" style="padding-top: 12px; max-width: 1100px;">
+  <div class="container users-page" data-w="lg" style="padding-top: 12px; max-width: 1100px;">
     <div class="users-header">
       <div>
         <h1 class="display" style="margin:0;">Users Management</h1>
