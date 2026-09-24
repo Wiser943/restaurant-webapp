@@ -20,6 +20,12 @@ const { createBanner, updateBanner, deleteBanner } = require('../controllers/ban
 const { updatePaymentInfo } = require('../controllers/paymentInfoController');
 const { updateContactInfo } = require('../controllers/contactInfoController');
 const {
+  getAllCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
+} = require('../controllers/couponController');
+const {
   getConversations,
   getConversationMessages,
   adminSendMessage,
@@ -61,6 +67,12 @@ router.put('/contact-info', updateContactInfo);
 router.get('/support', getConversations);
 router.get('/support/:userId', getConversationMessages);
 router.post('/support/:userId', adminSendMessage);
+
+// Promo code management
+router.get('/coupons', getAllCoupons);
+router.post('/coupons', createCoupon);
+router.patch('/coupons/:id', updateCoupon);
+router.delete('/coupons/:id', deleteCoupon);
 
 // Marketplace bookkeeping (Section 4 helper)
 router.post('/marketplace/payout', getMarketplacePayout);

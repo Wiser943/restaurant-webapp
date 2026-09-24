@@ -80,6 +80,11 @@ const orderSchema = new mongoose.Schema(
     originalTotalAmount: { type: Number },
     priceAdjustmentReason: { type: String },
 
+    // Promo code applied at checkout, if any. Re-validated and the discount
+    // recomputed server-side in placeOrder — never trusted from the client.
+    couponCode: { type: String },
+    discountAmount: { type: Number, default: 0 },
+
     // How the customer intends to pay. "pay_on_delivery" is only offered at
     // checkout when the delivery resolves to IN_HOUSE (i.e. the customer is
     // close by) and still needs an admin's explicit sign-off (reviewStatus

@@ -23,6 +23,11 @@ const menuItemSchema = new mongoose.Schema(
 
     tags: [{ type: String }],
 
+    // Cached from the Review collection whenever a review is added, so
+    // listing the menu doesn't need a separate aggregation query per item.
+    ratingAvg: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+
     // Admin-defined extras/add-ons a customer can toggle on the item page,
     // e.g. { name: 'Kpomo', price: 300 }. Priced independently of the base item.
     extras: [

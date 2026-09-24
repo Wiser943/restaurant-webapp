@@ -7,6 +7,12 @@ let item = null;
 let currentUser = null;
 let isFavorite = false;
 let quantity = 1;
+let reviews = [];
+let ratingAvg = 0;
+let ratingCount = 0;
+let canReview = false;
+let reviewableOrderId = null;
+let draftStars = 0;
 
 // selectedExtras: { [extraName]: quantity }  — an extra only counts toward
 // the total once its toggle is on (quantity >= 1).
@@ -30,6 +36,23 @@ async function loadItem() {
   } catch (e) { /* not logged in - fine, they can still view */ }
 
   renderItem();
+
+  try {
+    const data = await api.get(`/reviews/menu/${itemId}`);
+    reviews = data.reviews;
+    ratingAvg = data.ratingAvg;
+    ratingCount = data.ratingCount;
+  } catch (e) { reviews = []; }
+
+  if (currentUser) {
+    try {
+      const data = await api.get(`/reviews/can-review/${itemId}`);
+      canReview = data.canReview;
+      reviewableOrderId = data.orderId;
+    } catch (e) { canReview = false; }
+  }
+
+  renderReviews();
 }
 
 function showError(message) {
@@ -178,6 +201,7 @@ function renderItem() {
     <div class="tag-row">
       ${!item.isAvailable ? '<span class="tag tag-sold-out">Sold out</span>' : '<span class="tag tag-ready">Ready now</span>'}
       ${item.isAlwaysOnMenu ? '<span class="tag tag-staple">Always on the menu</span>' : ''}
+      ${item.ratingCount ? `<span class="star-rating"><span class="stars">${starsHtml(item.ratingAvg)}</span><span class="rating-count">${item.ratingAvg.toFixed(1)} (${item.ratingCount})</span></span>` : ''}
     </div>
     <div class="title-row">
       <h1 class="display">${item.name}</h1>
@@ -325,5 +349,123 @@ async function handleAdd() {
 
 function escapeAttr(str) { return escapeHtml(str).replace(/"/g, '&quot;'); }
 function cssEscape(str) { return window.CSS && CSS.escape ? CSS.escape(str) : str.replace(/["\\]/g, '\\$&'); }
+
+// ---- Ratings & reviews ----
+
+function starsHtml(rating) {
+  const rounded = Math.round(rating);
+  return Array.from({ length: 5 }).map((_, i) =>
+    `<i class="fa-solid fa-star ${i < rounded ? '' : 'star-empty'}"></i>`
+  ).join('');
+}
+
+function formatReviewDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function renderReviews() {
+  const wrap = document.getElementById('reviews-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = `
+    <div class="reviews-section">
+      <p class="eyebrow" style="margin-bottom:10px;">Reviews</p>
+
+      ${canReview ? `
+        <div class="card review-form-card">
+          <p class="extras-title" style="margin-bottom:8px;">How was it?</p>
+          <div class="star-input" id="star-input">
+            ${Array.from({ length: 5 }).map((_, i) => `<i class="fa-solid fa-star" data-value="${i + 1}"></i>`).join('')}
+          </div>
+          <textarea id="review-comment" rows="2" placeholder="Optional — tell us more"></textarea>
+          <button class="btn btn-primary btn-sm" id="submit-review-btn" style="margin-top:10px;" disabled>Submit review</button>
+          <p class="error-text" id="review-error" style="display:none; margin-top:8px;"></p>
+        </div>
+      ` : ''}
+
+      ${reviews.length ? `
+        <div class="reviews-summary">
+          <span class="avg-number">${ratingAvg.toFixed(1)}</span>
+          <div>
+            <div class="stars">${starsHtml(ratingAvg)}</div>
+            <span class="rating-count">${ratingCount} review${ratingCount === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+        <div id="review-list">
+          ${reviews.map((r) => `
+            <div class="review-row">
+              <div class="review-row-head">
+                <span class="review-author">${escapeHtml(r.userName)}</span>
+                <span class="stars">${starsHtml(r.rating)}</span>
+              </div>
+              <span class="review-date">${formatReviewDate(r.createdAt)}</span>
+              ${r.comment ? `<p class="review-comment">${escapeHtml(r.comment)}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : `<p class="helper-text">No reviews yet — be the first to try this and let others know what you think.</p>`}
+    </div>
+  `;
+
+  if (canReview) bindStarInput();
+}
+
+function bindStarInput() {
+  const starInput = document.getElementById('star-input');
+  const submitBtn = document.getElementById('submit-review-btn');
+  const stars = starInput.querySelectorAll('i');
+
+  function paintStars(n) {
+    stars.forEach((s, i) => s.classList.toggle('filled', i < n));
+  }
+
+  stars.forEach((star) => {
+    star.addEventListener('click', () => {
+      draftStars = Number(star.dataset.value);
+      paintStars(draftStars);
+      submitBtn.disabled = false;
+    });
+  });
+
+  submitBtn.addEventListener('click', submitReview);
+}
+
+async function submitReview() {
+  const btn = document.getElementById('submit-review-btn');
+  const errorEl = document.getElementById('review-error');
+  errorEl.style.display = 'none';
+
+  if (!draftStars) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  try {
+    await api.post('/reviews', {
+      menuItemId: itemId,
+      orderId: reviewableOrderId,
+      rating: draftStars,
+      comment: document.getElementById('review-comment').value,
+    });
+    UI.toast('Thanks for the review!', { type: 'success' });
+    draftStars = 0;
+    canReview = false;
+
+    const data = await api.get(`/reviews/menu/${itemId}`);
+    reviews = data.reviews;
+    ratingAvg = data.ratingAvg;
+    ratingCount = data.ratingCount;
+    item.ratingAvg = data.ratingAvg;
+    item.ratingCount = data.ratingCount;
+
+    renderReviews();
+    renderItem();
+  } catch (err) {
+    errorEl.textContent = err.message || 'Could not submit your review.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Submit review';
+  }
+}
 
 loadItem();

@@ -2215,3 +2215,127 @@ img {
   .auth-page { max-width: 480px; margin: 0 auto; }
   .chat-page { max-width: 760px !important; }
 }
+
+/* ============================================================
+   Added: skeleton loaders, filter modal, ratings/reviews, coupons
+   ============================================================ */
+
+/* ---- Skeleton loaders (menu grid + order page) ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--glass);
+}
+.skeleton::after {
+  content: '';
+  position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--glass-strong), transparent);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer { 100% { transform: translateX(100%); } }
+
+.skeleton-card { border-radius: var(--radius-md); overflow: hidden; }
+.skeleton-thumb { aspect-ratio: 1 / 1; border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.skeleton-line { height: 12px; border-radius: 6px; margin: 10px 10px 0; }
+.skeleton-line.w-70 { width: 70%; }
+.skeleton-line.w-40 { width: 40%; margin-bottom: 10px; }
+
+.skeleton-block { border-radius: var(--radius-md); height: 64px; margin-bottom: 10px; }
+
+/* ---- Filter modal (bottom-sheet style, reuses .ui-modal-overlay scrim) ---- */
+.filter-modal {
+  width: 100%; max-width: 420px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border-strong);
+  padding: 22px 20px 20px;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+  max-height: 84vh;
+  overflow-y: auto;
+}
+.filter-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.filter-modal-header h3 { font-family: var(--font-display); font-size: 19px; margin: 0; }
+.filter-section { margin-bottom: 18px; }
+.filter-section-label {
+  font-size: 12.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-muted); margin: 0 0 10px;
+}
+.filter-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.filter-chip {
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--glass-border-strong); background: var(--glass);
+  color: var(--ink); font-size: 13px; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.filter-chip.active { background: var(--orange); border-color: var(--orange); color: #16120e; font-weight: 600; }
+.filter-range-row { display: flex; align-items: center; gap: 10px; }
+.filter-range-row input {
+  width: 100%; background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); padding: 10px 12px; color: var(--ink); font-size: 14px;
+  font-family: var(--font-mono);
+}
+.filter-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 0;
+}
+.filter-modal-actions { display: flex; gap: 10px; margin-top: 4px; }
+.filter-modal-actions .btn { flex: 1; }
+.filter-badge-dot {
+  position: absolute; top: -3px; right: -3px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--orange); border: 2px solid var(--bg);
+}
+
+/* ---- Star ratings ---- */
+.star-rating { display: inline-flex; align-items: center; gap: 4px; }
+.star-rating .stars { display: inline-flex; gap: 1px; color: var(--orange); font-size: 13px; }
+.star-rating .stars i.star-empty { color: var(--glass-border-strong); }
+.star-rating .rating-count { font-size: 12px; color: var(--ink-muted); }
+
+.card-rating-badge {
+  position: absolute; bottom: 8px; left: 8px;
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(16, 12, 8, 0.72); backdrop-filter: blur(6px);
+  border-radius: 999px; padding: 3px 8px 3px 6px;
+  font-size: 11.5px; font-weight: 600; color: #f6efe4;
+}
+.card-rating-badge i { color: var(--orange); font-size: 10px; }
+
+.star-input { display: flex; gap: 6px; font-size: 26px; margin: 6px 0 4px; }
+.star-input i { color: var(--glass-border-strong); cursor: pointer; transition: color 0.1s ease; }
+.star-input i.filled { color: var(--orange); }
+
+.reviews-section { margin: 18px 0 4px; }
+.reviews-summary { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.reviews-summary .avg-number { font-family: var(--font-display); font-size: 26px; }
+.review-row { padding: 12px 0; border-bottom: 1px solid var(--glass-border); }
+.review-row:last-child { border-bottom: none; }
+.review-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.review-author { font-size: 13.5px; font-weight: 600; }
+.review-date { font-size: 11.5px; color: var(--ink-faint); }
+.review-comment { font-size: 13.5px; color: var(--ink-muted); margin: 4px 0 0; line-height: 1.5; }
+.review-form-card { padding: 16px; margin-bottom: 16px; }
+
+/* ---- Coupon / promo code (checkout) ---- */
+.coupon-row { display: flex; gap: 8px; }
+.coupon-row input {
+  flex: 1; background: var(--glass); border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm); padding: 11px 14px; color: var(--ink);
+  font-size: 14px; text-transform: uppercase; letter-spacing: 0.02em;
+}
+.coupon-applied {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: rgba(143, 170, 124, 0.12); border: 1px solid rgba(143, 170, 124, 0.3);
+  font-size: 13.5px;
+}
+.coupon-applied .coupon-code-label { color: var(--sage); font-weight: 600; }
+.coupon-applied .coupon-remove-btn {
+  background: none; border: none; color: var(--ink-muted); cursor: pointer; font-size: 13px;
+  text-decoration: underline;
+}
+.discount-row { color: var(--sage); }

@@ -24,6 +24,8 @@ const supplierRoutes = require('./routes/supplierRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
 const pushRoutes = require('./routes/pushRoutes');
 const chowdeckWebhookRoutes = require('./routes/chowdeckWebhookRoutes');
+const reviewRoutes = require('./routes/reviewRoutes');
+const couponRoutes = require('./routes/couponRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -86,6 +88,8 @@ app.use('/api/contact-info', contactInfoRoutes);
 app.use('/api/supplier', supplierRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/coupons', couponRoutes);
 app.get('/api/health', (req, res) => res.json({ status: 'ok', env: envStatus }));
 
 // ---- Static File Serving ----

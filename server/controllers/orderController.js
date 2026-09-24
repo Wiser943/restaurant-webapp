@@ -6,6 +6,8 @@ const generateOrderNumber = require('../utils/generateOrderNumber');
 const { resolveDelivery } = require('./deliveryController');
 const { normalizeCoords } = require('../utils/geo');
 const { sendPushToRole } = require('../utils/sendPush');
+const { validateCouponForUser } = require('./couponController');
+const Coupon = require('../models/Coupon');
 
 // Generates an orderNumber and retries on the (very unlikely) chance of a
 // collision, since it's a short code rather than a full UUID.
@@ -28,7 +30,7 @@ async function uniqueOrderNumber() {
 // stamped it via PATCH /admin/orders/:id/review-approve.
 exports.placeOrder = async (req, res, next) => {
   try {
-    const { addressId, deliveryAddress: manualAddress, notes, paymentMethod, customerLocation } = req.body;
+    const { addressId, deliveryAddress: manualAddress, notes, paymentMethod, customerLocation, couponCode } = req.body;
 
     // Address must come from the customer's saved profile addresses (max 2,
     // managed on the Addresses page) — resolved here, never trusted as raw
@@ -78,6 +80,26 @@ exports.placeOrder = async (req, res, next) => {
         extras,
       });
       totalAmount += menuItem.currentPrice * cartItem.quantity + extrasTotal;
+    }
+
+    // --- Promo code (applied to the food subtotal only, before delivery fee) ---
+    // Re-validated from scratch here — the /coupons/validate call at checkout
+    // was only ever a preview, never trusted for the actual charge.
+    let appliedCoupon = null;
+    let discountAmount = 0;
+    if (couponCode) {
+      try {
+        const { coupon, discount } = await validateCouponForUser({
+          code: couponCode,
+          subtotal: totalAmount,
+          userId: req.user._id,
+        });
+        appliedCoupon = coupon;
+        discountAmount = discount;
+        totalAmount -= discountAmount;
+      } catch (err) {
+        return res.status(400).json({ message: err.message });
+      }
     }
 
     // --- Delivery routing (Dual-Delivery Proximity Logic) ---
@@ -134,6 +156,8 @@ exports.placeOrder = async (req, res, next) => {
       deliveryAddress,
       notes,
       delivery,
+      couponCode: appliedCoupon?.code,
+      discountAmount,
       reviewStatus: 'pending',
       paymentStatus: 'pending',
       orderStatus: 'pending',
@@ -142,6 +166,14 @@ exports.placeOrder = async (req, res, next) => {
     // Clear the cart now that the order has been placed
     cart.items = [];
     await cart.save();
+
+    // Record that this code was used, so usageLimit/perUserLimit checks on
+    // future orders see it. Doesn't block the order if this fails.
+    if (appliedCoupon) {
+      Coupon.updateOne({ _id: appliedCoupon._id }, { $inc: { timesUsed: 1 } }).catch((err) =>
+        console.error('[placeOrder] coupon usage increment failed:', err.message)
+      );
+    }
 
     // Notify admins in real time that a new order needs review — both via
     // the socket (for an open dashboard tab) and a real push notification

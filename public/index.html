@@ -53,7 +53,10 @@
   <div class="search-bar card">
     <span><i class="fa-solid fa-magnifying-glass"></i></span>
     <input type="text" id="search-input" placeholder="Search your favorite food" />
-    <span><i class="fa-solid fa-sliders"></i></span>
+    <button type="button" id="filter-btn" class="filter-icon-btn" aria-label="Filter and sort" style="background:none; border:none; padding:0; position:relative; color:inherit; cursor:pointer;">
+      <i class="fa-solid fa-sliders"></i>
+      <span id="filter-badge-dot" class="filter-badge-dot" style="display:none;"></span>
+    </button>
   </div>
 
   <!-- Categories -->
@@ -67,9 +70,7 @@
   </div>
 
   <div class="container">
-    <div class="grid" id="menu-grid">
-      <p class="helper-text">Loading the menu…</p>
-    </div>
+    <div class="grid" id="menu-grid"></div>
   </div>
 
   <div id="tabbar"></div>

@@ -14,6 +14,10 @@ let deliveryQuote = null; // { mode, fee, etaMinutes, distanceKm } from POST /de
 let deliveryState = 'idle'; // 'idle' | 'locating' | 'quoting' | 'ready' | 'error'
 let deliveryError = null;
 
+let appliedCoupon = null; // { code, discount } once a promo code has been validated
+let couponState = 'idle'; // 'idle' | 'checking' | 'error'
+let couponError = null;
+
 async function loadCheckout() {
   try {
     await api.get('/auth/me');
@@ -69,6 +73,8 @@ function renderCheckout() {
       `).join('')}
     </div>
 
+    <div class="card" style="padding:16px; margin-bottom:20px;" id="coupon-wrap"></div>
+
     <div class="card" style="padding:16px; margin-bottom:20px;">
       <p class="eyebrow" style="margin-bottom:10px;">Delivery address <span class="error-text" style="font-size:12px;">*required</span></p>
       <div id="address-picker"></div>
@@ -86,6 +92,7 @@ function renderCheckout() {
 
     <div class="ticket-tear"></div>
 
+    <div id="totals-breakdown"></div>
     <div class="cart-total" style="margin-bottom:16px;" id="total-row">
       <span>Total due</span>
       <span class="price" style="font-size:20px;" id="total-display">${currency(total)}</span>
@@ -99,11 +106,78 @@ function renderCheckout() {
     </p>
   `;
 
+  renderCouponCard();
   renderAddressPicker();
   renderDeliveryCard(); // separate function so re-runs (after locating/quoting) don't wipe the form above
   renderPaymentMethod();
+  updateTotalDisplay();
 
   document.getElementById('submit-btn').addEventListener('click', placeOrder);
+}
+
+function discountAmount() {
+  return appliedCoupon ? appliedCoupon.discount : 0;
+}
+
+function renderCouponCard() {
+  const wrap = document.getElementById('coupon-wrap');
+  if (!wrap) return;
+
+  if (appliedCoupon) {
+    wrap.innerHTML = `
+      <p class="eyebrow" style="margin-bottom:10px;">Promo code</p>
+      <div class="coupon-applied">
+        <span><span class="coupon-code-label">${escapeHtmlLocal(appliedCoupon.code)}</span> applied — ${currency(appliedCoupon.discount)} off</span>
+        <button type="button" class="coupon-remove-btn" id="coupon-remove-btn">Remove</button>
+      </div>
+    `;
+    document.getElementById('coupon-remove-btn').addEventListener('click', () => {
+      appliedCoupon = null;
+      couponState = 'idle';
+      couponError = null;
+      renderCouponCard();
+      updateTotalDisplay();
+    });
+    return;
+  }
+
+  wrap.innerHTML = `
+    <p class="eyebrow" style="margin-bottom:10px;">Promo code</p>
+    <div class="coupon-row">
+      <input type="text" id="coupon-input" placeholder="Enter code" />
+      <button type="button" class="btn btn-ghost btn-sm" id="coupon-apply-btn">${couponState === 'checking' ? 'Checking…' : 'Apply'}</button>
+    </div>
+    ${couponError ? `<p class="error-text" style="margin-top:8px;">${couponError}</p>` : ''}
+  `;
+
+  document.getElementById('coupon-apply-btn').addEventListener('click', applyCoupon);
+  document.getElementById('coupon-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') applyCoupon();
+  });
+}
+
+async function applyCoupon() {
+  const input = document.getElementById('coupon-input');
+  const code = input.value.trim();
+  if (!code) return;
+
+  couponState = 'checking';
+  couponError = null;
+  renderCouponCard();
+
+  try {
+    const data = await api.post('/coupons/validate', { code, subtotal: foodSubtotal() });
+    appliedCoupon = { code: data.coupon.code, discount: data.discount };
+    couponState = 'idle';
+    UI.toast(`Promo code applied — ${currency(data.discount)} off`, { type: 'success' });
+  } catch (err) {
+    couponState = 'error';
+    couponError = err.message;
+    appliedCoupon = null;
+  }
+
+  renderCouponCard();
+  updateTotalDisplay();
 }
 
 function renderAddressPicker() {
@@ -226,7 +300,25 @@ function renderDeliveryCard() {
 function updateTotalDisplay() {
   const totalEl = document.getElementById('total-display');
   if (!totalEl) return;
-  totalEl.textContent = currency(foodSubtotal() + (deliveryQuote?.fee || 0));
+
+  const subtotal = foodSubtotal();
+  const discount = discountAmount();
+  const deliveryFee = deliveryQuote?.fee || 0;
+  const total = Math.max(0, subtotal - discount) + deliveryFee;
+
+  totalEl.textContent = currency(total);
+
+  const breakdownEl = document.getElementById('totals-breakdown');
+  if (breakdownEl) {
+    breakdownEl.innerHTML = discount > 0 ? `
+      <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:13.5px;">
+        <span class="helper-text">Subtotal</span><span>${currency(subtotal)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:4px 0 10px; font-size:13.5px;" class="discount-row">
+        <span>Discount</span><span>-${currency(discount)}</span>
+      </div>
+    ` : '';
+  }
 }
 
 async function detectLocationAndQuote() {
@@ -283,6 +375,9 @@ async function placeOrder() {
       // authoritative mode/fee itself from these coordinates rather than
       // trusting deliveryQuote (that was only ever a preview).
       customerLocation: customerLocation || undefined,
+      // Re-validated and recomputed server-side — this is never trusted
+      // as the actual discount, just tells the backend which code to apply.
+      couponCode: appliedCoupon?.code || undefined,
     });
     Sound.orderPlaced();
     await UI.alert("Your order has been submitted and is awaiting review. We'll notify you as soon as it's approved.", {
