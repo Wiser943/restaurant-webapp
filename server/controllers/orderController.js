@@ -30,7 +30,26 @@ async function uniqueOrderNumber() {
 // stamped it via PATCH /admin/orders/:id/review-approve.
 exports.placeOrder = async (req, res, next) => {
   try {
-    const { addressId, deliveryAddress: manualAddress, notes, paymentMethod, customerLocation, couponCode } = req.body;
+    const { addressId, deliveryAddress: manualAddress, notes, paymentMethod, customerLocation, couponCode, scheduledFor } = req.body;
+
+    // --- Schedule for later (optional) ---
+    let scheduledForDate = null;
+    if (scheduledFor) {
+      const parsed = new Date(scheduledFor);
+      const minLeadMs = 30 * 60 * 1000; // at least 30 minutes' notice
+      const maxLeadMs = 7 * 24 * 60 * 60 * 1000; // no more than a week out
+      if (Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({ message: 'Invalid scheduled delivery time.' });
+      }
+      const diff = parsed.getTime() - Date.now();
+      if (diff < minLeadMs) {
+        return res.status(400).json({ message: "Scheduled orders need at least 30 minutes' notice." });
+      }
+      if (diff > maxLeadMs) {
+        return res.status(400).json({ message: 'Scheduled orders can only be placed up to a week in advance.' });
+      }
+      scheduledForDate = parsed;
+    }
 
     // Address must come from the customer's saved profile addresses (max 2,
     // managed on the Addresses page) — resolved here, never trusted as raw
@@ -158,6 +177,7 @@ exports.placeOrder = async (req, res, next) => {
       delivery,
       couponCode: appliedCoupon?.code,
       discountAmount,
+      scheduledFor: scheduledForDate,
       reviewStatus: 'pending',
       paymentStatus: 'pending',
       orderStatus: 'pending',

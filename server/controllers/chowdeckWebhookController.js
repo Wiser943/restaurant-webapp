@@ -136,7 +136,7 @@ exports.handleWebhook = async (req, res, next) => {
         body: friendlyStatus,
         url: `/order.html?id=${order._id}`,
         tag: `order-${order._id}`, // collapses rapid updates into one notification
-      }).catch((err) => console.error('[chowdeck-webhook] push failed:', err.message));
+      }, { category: 'order' }).catch((err) => console.error('[chowdeck-webhook] push failed:', err.message));
     }
 
     // --- 7. Acknowledge quickly, as Chowdeck's docs require ---

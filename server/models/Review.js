@@ -11,6 +11,7 @@ const reviewSchema = new mongoose.Schema(
     userName: { type: String, required: true }, // snapshot, in case the account is later renamed/removed
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, trim: true, maxlength: 500 },
+    hidden: { type: Boolean, default: false }, // admin-moderated out of public view
   },
   { timestamps: true }
 );

@@ -32,3 +32,25 @@ const api = {
 function currency(amount) {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount);
 }
+
+// Re-adds every line from a past order to the current cart, one call per
+// line (the cart API only accepts one item at a time). Items that have
+// since gone unavailable or been removed from the menu are skipped rather
+// than failing the whole reorder - the caller gets a summary either way.
+async function reorderToCart(items) {
+  let added = 0;
+  let skipped = 0;
+  for (const item of items) {
+    try {
+      await api.post('/cart', {
+        menuItemId: item.menuItem,
+        quantity: item.quantity,
+        extras: item.extras,
+      });
+      added += 1;
+    } catch (e) {
+      skipped += 1;
+    }
+  }
+  return { added, skipped };
+}

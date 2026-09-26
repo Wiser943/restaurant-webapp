@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script>
-    // Apply the saved theme before first paint, so there's no flash of the
-    // wrong theme. Full toggle logic lives in /js/theme.js.
     (function () {
       try {
         if (localStorage.getItem('vck_theme') === 'light') {
@@ -14,7 +12,7 @@
       } catch (e) { /* ignore */ }
     })();
   </script>
-  <title>Admin · Coupons — VC Kitchen</title>
+  <title>Admin · Reviews — VC Kitchen</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="/css/profile.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -24,19 +22,17 @@
   <script src="/js/theme.js"></script>
   <div id="admin-nav"></div>
 
-  <div class="container" data-w="sm" style="padding-top: 12px; max-width: 560px;">
-    <h1 class="display" style="margin-bottom:16px;">Promo codes</h1>
-    <p class="helper-text" style="margin-bottom:16px;">Codes customers can enter at checkout for a discount.</p>
+  <div class="container" data-w="sm" style="padding-top: 12px; max-width: 620px;">
+    <h1 class="display" style="margin-bottom:16px;">Reviews</h1>
+    <p class="helper-text" style="margin-bottom:16px;">Hide or remove reviews that don't belong on the menu.</p>
 
-    <button class="btn btn-primary btn-sm" id="new-coupon-btn" style="margin-bottom:16px;">+ New code</button>
-    <div id="coupon-stats-wrap"></div>
-    <div id="coupon-form-wrap"></div>
-    <div id="coupon-list"><p class="helper-text">Loading…</p></div>
+    <div class="filter-chip-row" id="review-tabs" style="margin-bottom:16px;"></div>
+    <div id="review-list"><p class="helper-text">Loading…</p></div>
   </div>
 
   <script src="/admin/js/api.js"></script>
   <script src="/js/push.js"></script>
   <script src="/admin/js/admin-nav.js"></script>
-  <script src="/admin/js/admin-coupons.js"></script>
+  <script src="/admin/js/admin-reviews.js"></script>
 </body>
 </html>

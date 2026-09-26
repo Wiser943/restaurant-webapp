@@ -24,7 +24,13 @@ const {
   createCoupon,
   updateCoupon,
   deleteCoupon,
+  getCouponStats,
 } = require('../controllers/couponController');
+const {
+  getAllReviewsForAdmin,
+  setReviewHidden,
+  deleteReview,
+} = require('../controllers/reviewController');
 const {
   getConversations,
   getConversationMessages,
@@ -70,9 +76,15 @@ router.post('/support/:userId', adminSendMessage);
 
 // Promo code management
 router.get('/coupons', getAllCoupons);
+router.get('/coupons/stats', getCouponStats);
 router.post('/coupons', createCoupon);
 router.patch('/coupons/:id', updateCoupon);
 router.delete('/coupons/:id', deleteCoupon);
+
+// Review moderation
+router.get('/reviews', getAllReviewsForAdmin);
+router.patch('/reviews/:id', setReviewHidden);
+router.delete('/reviews/:id', deleteReview);
 
 // Marketplace bookkeeping (Section 4 helper)
 router.post('/marketplace/payout', getMarketplacePayout);

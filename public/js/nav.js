@@ -128,6 +128,49 @@ async function renderNav() {
   }
 
   maybeShowInstallBanner();
+
+  if (user) wireLiveNotifications(user);
+}
+
+// Loads the socket.io client only if some other script on the page hasn't
+// already loaded it (home.js, order-detail.js etc. each load their own) -
+// nav.js runs on every page, including ones that never needed a live
+// connection before, so it can't assume the tag is already there.
+function loadSocketIoScript() {
+  return new Promise((resolve) => {
+    if (window.io) return resolve();
+    const existing = document.querySelector('script[src*="cdn.socket.io"]');
+    if (existing) { existing.addEventListener('load', () => resolve()); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => resolve(); // fail quietly - the bell just won't update live, nothing breaks
+    document.head.appendChild(s);
+  });
+}
+
+// Lights up the bell dot the instant an admin changes something about this
+// user's orders or replies in support - previously this only recomputed on
+// a full page load, so people had to manually refresh to see it.
+async function wireLiveNotifications(user) {
+  await loadSocketIoScript();
+  if (!window.io) return;
+
+  const socket = io();
+  socket.emit('join:user', user._id);
+
+  const showBellDot = () => {
+    const bell = document.getElementById('notif-bell');
+    if (bell && !bell.querySelector('.bell-dot')) {
+      bell.insertAdjacentHTML('beforeend', '<span class="bell-dot"></span>');
+    }
+  };
+
+  socket.on('order:statusChanged', showBellDot);
+  socket.on('order:updated', showBellDot);
+  socket.on('support:message', (msg) => {
+    if (msg.sender === 'admin' || msg.sender === 'supplier') showBellDot();
+  });
 }
 
 function tabIcon(label, active) {

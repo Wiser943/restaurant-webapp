@@ -29,12 +29,14 @@ async function loadSupport() {
   await loadMessages();
 
   document.getElementById('chat-send').addEventListener('click', sendMessage);
-  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  const chatInput = document.getElementById('chat-input');
+  chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   });
+  chatInput.addEventListener('input', () => autoGrow(chatInput));
 
   // Live updates: admin replies appear instantly without refreshing.
   const socket = io();
@@ -204,6 +206,11 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function autoGrow(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
 async function sendMessage() {
   const input = document.getElementById('chat-input');
   const errorEl = document.getElementById('chat-error');
@@ -220,6 +227,7 @@ async function sendMessage() {
     });
     messages.push(data.message);
     input.value = '';
+    input.style.height = 'auto';
     activeQuickIssue = null;
     renderQuickIssues();
     renderMessages();

@@ -44,12 +44,14 @@ async function loadSupport() {
   if (activeUserId) await openConversation(activeUserId);
 
   document.getElementById('chat-send').addEventListener('click', sendReply);
-  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  const chatInput = document.getElementById('chat-input');
+  chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendReply();
     }
   });
+  chatInput.addEventListener('input', () => autoGrow(chatInput));
 
   // Live updates: new messages from EITHER audience arrive over the same
   // socket event — we just re-fetch whichever list is currently open, so a
@@ -301,6 +303,11 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function autoGrow(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
 async function sendReply() {
   if (!activeUserId) return;
   const input = document.getElementById('chat-input');
@@ -316,6 +323,7 @@ async function sendReply() {
     });
     activeMessages.push(data.message);
     input.value = '';
+    input.style.height = 'auto';
     renderThread();
     fetchAndRenderConversations();
   } finally {

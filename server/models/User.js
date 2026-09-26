@@ -18,6 +18,11 @@ const userSchema = new mongoose.Schema(
       },
     ],
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' }],
+
+    // Push notification preferences - both default on (opt-out, not opt-in),
+    // matching what people expect from an order-tracking app.
+    notifyOrderUpdates: { type: Boolean, default: true },
+    notifyPromotions: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

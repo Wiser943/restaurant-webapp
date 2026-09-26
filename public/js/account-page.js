@@ -165,12 +165,70 @@ async function changeAvatar() {
 }
 
 async function openNotifications() {
-  try {
-    await Push.subscribe();
-    UI.toast('Push notifications are enabled on this device.', { type: 'success' });
-  } catch (e) {
-    UI.toast('Could not enable notifications — check your browser permissions.', { type: 'danger' });
+  const overlay = document.createElement('div');
+  overlay.className = 'ui-modal-overlay';
+  overlay.innerHTML = `
+    <div class="filter-modal glass-strong rise-in" role="dialog" aria-modal="true">
+      <div class="filter-modal-header">
+        <h3>Notifications</h3>
+        <button type="button" id="notif-close-btn" style="background:none; border:none; color:var(--ink-muted); font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="filter-section">
+        <button class="btn btn-ghost btn-block" id="notif-enable-device-btn"><i class="fa-solid fa-bell"></i> Enable push on this device</button>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-toggle-row">
+          <p class="filter-section-label" style="margin:0;">Order updates</p>
+          <label class="switch"><input type="checkbox" id="notif-order-toggle" ${profileUser.notifyOrderUpdates !== false ? 'checked' : ''} /><span class="switch-track"></span></label>
+        </div>
+        <p class="helper-text" style="margin:4px 0 0;">Status changes, dispatch, price adjustments.</p>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-toggle-row">
+          <p class="filter-section-label" style="margin:0;">Promotions &amp; offers</p>
+          <label class="switch"><input type="checkbox" id="notif-promo-toggle" ${profileUser.notifyPromotions !== false ? 'checked' : ''} /><span class="switch-track"></span></label>
+        </div>
+        <p class="helper-text" style="margin:4px 0 0;">Deals, new menu items, promo codes.</p>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="notif-save-btn">Save</button>
+    </div>
+  `;
+
+  function close() {
+    overlay.classList.add('closing');
+    setTimeout(() => overlay.remove(), 160);
   }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#notif-close-btn').addEventListener('click', close);
+
+  overlay.querySelector('#notif-enable-device-btn').addEventListener('click', async () => {
+    try {
+      await Push.subscribe();
+      UI.toast('Push notifications are enabled on this device.', { type: 'success' });
+    } catch (e) {
+      UI.toast('Could not enable notifications — check your browser permissions.', { type: 'danger' });
+    }
+  });
+
+  overlay.querySelector('#notif-save-btn').addEventListener('click', async () => {
+    try {
+      const data = await api.patch('/auth/profile', {
+        notifyOrderUpdates: overlay.querySelector('#notif-order-toggle').checked,
+        notifyPromotions: overlay.querySelector('#notif-promo-toggle').checked,
+      });
+      profileUser = data.user;
+      UI.toast('Notification preferences saved', { type: 'success' });
+      close();
+    } catch (err) {
+      UI.toast(err.message, { type: 'danger' });
+    }
+  });
+
+  document.body.appendChild(overlay);
 }
 
 async function openChangePassword() {

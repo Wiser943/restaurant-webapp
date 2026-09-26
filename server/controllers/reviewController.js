@@ -4,10 +4,11 @@ const MenuItem = require('../models/MenuItem');
 
 // Recomputes and caches ratingAvg/ratingCount on the menu item itself, so
 // GET /api/menu doesn't need to aggregate reviews for every item on every
-// page load — only whenever a review is actually added.
+// page load — only whenever a review is actually added or moderated.
+// Hidden reviews are excluded from both the average and the count.
 async function recomputeMenuItemRating(menuItemId) {
   const stats = await Review.aggregate([
-    { $match: { menuItem: menuItemId } },
+    { $match: { menuItem: menuItemId, hidden: { $ne: true } } },
     { $group: { _id: '$menuItem', avg: { $avg: '$rating' }, count: { $sum: 1 } } },
   ]);
   const { avg = 0, count = 0 } = stats[0] || {};
@@ -20,7 +21,7 @@ async function recomputeMenuItemRating(menuItemId) {
 // GET /api/reviews/menu/:menuItemId (public)
 exports.getMenuItemReviews = async (req, res, next) => {
   try {
-    const reviews = await Review.find({ menuItem: req.params.menuItemId }).sort({ createdAt: -1 }).limit(50);
+    const reviews = await Review.find({ menuItem: req.params.menuItemId, hidden: { $ne: true } }).sort({ createdAt: -1 }).limit(50);
     const item = await MenuItem.findById(req.params.menuItemId).select('ratingAvg ratingCount');
     res.json({
       reviews,
@@ -103,6 +104,51 @@ exports.createReview = async (req, res, next) => {
     if (err.code === 11000) {
       return res.status(409).json({ message: "You've already reviewed this item for this order." });
     }
+    next(err);
+  }
+};
+
+// --- Admin moderation ---
+
+// GET /api/admin/reviews?menuItemId=&hidden=
+exports.getAllReviewsForAdmin = async (req, res, next) => {
+  try {
+    const filter = {};
+    if (req.query.menuItemId) filter.menuItem = req.query.menuItemId;
+    if (req.query.hidden === 'true') filter.hidden = true;
+    if (req.query.hidden === 'false') filter.hidden = { $ne: true };
+
+    const reviews = await Review.find(filter).populate('menuItem', 'name').sort({ createdAt: -1 }).limit(200);
+    res.json({ reviews });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PATCH /api/admin/reviews/:id  { hidden: true|false }
+exports.setReviewHidden = async (req, res, next) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) return res.status(404).json({ message: 'Review not found.' });
+
+    review.hidden = !!req.body.hidden;
+    await review.save();
+    await recomputeMenuItemRating(review.menuItem);
+
+    res.json({ review });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// DELETE /api/admin/reviews/:id
+exports.deleteReview = async (req, res, next) => {
+  try {
+    const review = await Review.findByIdAndDelete(req.params.id);
+    if (!review) return res.status(404).json({ message: 'Review not found.' });
+    await recomputeMenuItemRating(review.menuItem);
+    res.json({ message: 'Review deleted.' });
+  } catch (err) {
     next(err);
   }
 };

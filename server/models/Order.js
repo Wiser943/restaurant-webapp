@@ -85,6 +85,12 @@ const orderSchema = new mongoose.Schema(
     couponCode: { type: String },
     discountAmount: { type: Number, default: 0 },
 
+    // Set when the customer chose "Schedule for later" at checkout instead
+    // of "Order now". Purely informational for the kitchen/admin right now —
+    // it doesn't change the order status machine or trigger anything on
+    // its own at the scheduled time.
+    scheduledFor: { type: Date, default: null },
+
     // How the customer intends to pay. "pay_on_delivery" is only offered at
     // checkout when the delivery resolves to IN_HOUSE (i.e. the customer is
     // close by) and still needs an admin's explicit sign-off (reviewStatus

@@ -7,7 +7,40 @@ async function loadCoupons() {
   if (!admin) return;
 
   document.getElementById('new-coupon-btn').addEventListener('click', () => openCouponForm(null));
+  await renderStats();
   await fetchAndRenderCoupons();
+}
+
+async function renderStats() {
+  const wrap = document.getElementById('coupon-stats-wrap');
+  if (!wrap) return;
+  try {
+    const data = await api.get('/admin/coupons/stats');
+    if (!data.totals.redemptions) {
+      wrap.innerHTML = `<p class="helper-text" style="margin-bottom:16px;">No promo codes have been redeemed yet.</p>`;
+      return;
+    }
+    const top = data.byCode.slice(0, 3);
+    wrap.innerHTML = `
+      <div class="card" style="padding:16px; margin-bottom:16px;">
+        <div style="display:flex; gap:24px; margin-bottom:${top.length ? '14px' : '0'};">
+          <div><p class="helper-text" style="margin:0 0 2px;">Redemptions</p><p style="margin:0; font-family:var(--font-display); font-size:22px;">${data.totals.redemptions}</p></div>
+          <div><p class="helper-text" style="margin:0 0 2px;">Total discount given</p><p style="margin:0; font-family:var(--font-display); font-size:22px;">${currency(data.totals.totalDiscount)}</p></div>
+        </div>
+        ${top.length ? `
+          <p class="helper-text" style="margin:0 0 8px;">Top codes</p>
+          ${top.map((r) => `
+            <div style="display:flex; justify-content:space-between; font-size:13.5px; padding:4px 0;">
+              <span style="font-family:var(--font-mono);">${r.code}</span>
+              <span class="helper-text">${r.redemptions} use${r.redemptions === 1 ? '' : 's'} · ${currency(r.totalDiscount)}</span>
+            </div>
+          `).join('')}
+        ` : ''}
+      </div>
+    `;
+  } catch (e) {
+    wrap.innerHTML = '';
+  }
 }
 
 async function fetchAndRenderCoupons() {

@@ -1,5 +1,6 @@
 const { webpush, ensureConfigured } = require('../config/push');
 const PushSubscription = require('../models/PushSubscription');
+const User = require('../models/User');
 
 /**
  * Sends one push payload to every subscription belonging to a set of
@@ -30,8 +31,21 @@ async function pushToSubscriptions(subs, payload) {
   );
 }
 
-/** Push to every device a specific user has subscribed from. */
-async function sendPushToUser(userId, payload) {
+/**
+ * Push to every device a specific user has subscribed from.
+ * `category` lets the customer's own notification preferences (set in
+ * Account settings) silently opt them out of that kind of push - 'order'
+ * covers order-status/price/delivery updates, 'promo' covers marketing
+ * pushes. Anything else (e.g. a direct admin support reply) always sends.
+ */
+async function sendPushToUser(userId, payload, { category } = {}) {
+  if (category === 'order' || category === 'promo') {
+    const user = await User.findById(userId).select('notifyOrderUpdates notifyPromotions');
+    if (user) {
+      if (category === 'order' && user.notifyOrderUpdates === false) return;
+      if (category === 'promo' && user.notifyPromotions === false) return;
+    }
+  }
   const subs = await PushSubscription.find({ user: userId });
   await pushToSubscriptions(subs, payload);
 }

@@ -91,7 +91,7 @@ exports.reviewApproveOrder = async (req, res, next) => {
         : 'Your order was approved — open the app to complete payment.',
       url: `/order.html?id=${order._id}`,
       tag: `order-${order._id}`,
-    }).catch((err) => console.error('[reviewApproveOrder] push failed:', err.message));
+    }, { category: 'order' }).catch((err) => console.error('[reviewApproveOrder] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {
@@ -157,7 +157,7 @@ exports.approvePayment = async (req, res, next) => {
       body: 'Your payment was approved — your order is being prepared.',
       url: `/order.html?id=${order._id}`,
       tag: `order-${order._id}`,
-    }).catch((err) => console.error('[approvePayment] push failed:', err.message));
+    }, { category: 'order' }).catch((err) => console.error('[approvePayment] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {
@@ -195,7 +195,7 @@ exports.rejectPayment = async (req, res, next) => {
       body: 'We could not confirm your payment — open the app for details.',
       url: `/order.html?id=${order._id}`,
       tag: `order-${order._id}`,
-    }).catch((err) => console.error('[rejectPayment] push failed:', err.message));
+    }, { category: 'order' }).catch((err) => console.error('[rejectPayment] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {
@@ -212,6 +212,23 @@ exports.updateOrderStatus = async (req, res, next) => {
     await order.save();
 
     getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
+
+    const STATUS_COPY = {
+      preparing: { title: `Order #${order.orderNumber} is being prepared`, body: 'Your food is on the stove — we\'ll let you know when it\'s on its way.' },
+      out_for_delivery: { title: `Order #${order.orderNumber} is out for delivery`, body: 'Your rider is on the way.' },
+      completed: { title: `Order #${order.orderNumber} delivered`, body: 'Enjoy your meal! Tap to leave a review.' },
+      cancelled: { title: `Order #${order.orderNumber} cancelled`, body: 'Open the app for details.' },
+    };
+    const copy = STATUS_COPY[order.orderStatus];
+    if (copy) {
+      sendPushToUser(order.user, {
+        title: copy.title,
+        body: copy.body,
+        url: `/order.html?id=${order._id}`,
+        tag: `order-${order._id}`,
+      }, { category: 'order' }).catch((err) => console.error('[updateOrderStatus] push failed:', err.message));
+    }
+
     res.json({ order });
   } catch (err) {
     next(err);
@@ -426,6 +443,13 @@ exports.dispatchOrder = async (req, res, next) => {
     getIO().to(`user:${order.assignedSupplier}`).emit('order:assigned', order);
     getIO().to('admins').emit('order:updated', order);
 
+    sendPushToUser(order.user, {
+      title: `Order #${order.orderNumber} is out for delivery`,
+      body: `Estimated arrival in about ${etaMinutes} minutes.`,
+      url: `/order.html?id=${order._id}`,
+      tag: `order-${order._id}`,
+    }, { category: 'order' }).catch((err) => console.error('[dispatchOrder] push failed:', err.message));
+
     res.json({ order });
   } catch (err) {
     next(err);
@@ -472,6 +496,13 @@ exports.adjustOrderPrice = async (req, res, next) => {
     });
     getIO().to(`user:${order.user}`).emit('support:message', note);
     getIO().to('admins').emit('support:message', note);
+
+    sendPushToUser(order.user, {
+      title: `Order #${order.orderNumber} total updated`,
+      body: reason ? `New total is ${amount} — ${reason}` : `New total is ${amount}.`,
+      url: `/order.html?id=${order._id}`,
+      tag: `order-${order._id}`,
+    }, { category: 'order' }).catch((err) => console.error('[adjustOrderPrice] push failed:', err.message));
 
     res.json({ order });
   } catch (err) {

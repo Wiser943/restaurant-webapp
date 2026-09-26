@@ -95,7 +95,7 @@ exports.reportIssue = async (req, res, next) => {
       body: note.message,
       url: `/support.html?order=${encodeURIComponent(order.orderNumber)}`,
       tag: `support-${order.user}`,
-    }).catch((err) => console.error('[reportIssue] customer push failed:', err.message));
+    }, { category: 'order' }).catch((err) => console.error('[reportIssue] customer push failed:', err.message));
     sendPushToRole('admin', {
       title: `Delivery issue · Order #${order.orderNumber}`,
       body: note.message,

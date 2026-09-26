@@ -17,6 +17,10 @@ let deliveryError = null;
 let appliedCoupon = null; // { code, discount } once a promo code has been validated
 let couponState = 'idle'; // 'idle' | 'checking' | 'error'
 let couponError = null;
+let suggestedCoupon = null; // { code, discount } - best eligible code the customer hasn't applied yet
+
+let scheduleMode = 'now'; // 'now' | 'later'
+let scheduledForValue = ''; // datetime-local input value, only meaningful when scheduleMode === 'later'
 
 async function loadCheckout() {
   try {
@@ -37,6 +41,13 @@ async function loadCheckout() {
     const def = addresses.find((a) => a.isDefault) || addresses[0];
     selectedAddressId = def ? def._id : null;
   } catch (e) { addresses = []; }
+
+  try {
+    if (foodSubtotal() > 0) {
+      const data = await api.get(`/coupons/best?subtotal=${foodSubtotal()}`);
+      if (data.coupon) suggestedCoupon = { code: data.coupon.code, discount: data.discount };
+    }
+  } catch (e) { suggestedCoupon = null; }
 
   renderCheckout();
   detectLocationAndQuote(); // fires the browser's location permission prompt right at checkout, per spec
@@ -84,6 +95,8 @@ function renderCheckout() {
 
     <div class="card" style="padding:16px; margin-bottom:20px;" id="payment-method-wrap"></div>
 
+    <div class="card" style="padding:16px; margin-bottom:20px;" id="schedule-wrap"></div>
+
     <div class="field">
       <label for="description">Anything else we should know? (optional)</label>
       <textarea id="description" rows="2" placeholder="e.g. no onions please, extra spicy…"></textarea>
@@ -110,6 +123,7 @@ function renderCheckout() {
   renderAddressPicker();
   renderDeliveryCard(); // separate function so re-runs (after locating/quoting) don't wipe the form above
   renderPaymentMethod();
+  renderScheduleCard();
   updateTotalDisplay();
 
   document.getElementById('submit-btn').addEventListener('click', placeOrder);
@@ -143,6 +157,12 @@ function renderCouponCard() {
 
   wrap.innerHTML = `
     <p class="eyebrow" style="margin-bottom:10px;">Promo code</p>
+    ${suggestedCoupon ? `
+      <div class="coupon-applied" style="margin-bottom:10px; background: rgba(255, 154, 60, 0.1); border-color: rgba(255, 154, 60, 0.3);">
+        <span>You qualify for <span class="coupon-code-label" style="color:var(--orange);">${escapeHtmlLocal(suggestedCoupon.code)}</span> — ${currency(suggestedCoupon.discount)} off</span>
+        <button type="button" class="coupon-remove-btn" id="coupon-suggest-apply-btn" style="color:var(--orange); text-decoration:none; font-weight:600;">Apply</button>
+      </div>
+    ` : ''}
     <div class="coupon-row">
       <input type="text" id="coupon-input" placeholder="Enter code" />
       <button type="button" class="btn btn-ghost btn-sm" id="coupon-apply-btn">${couponState === 'checking' ? 'Checking…' : 'Apply'}</button>
@@ -150,10 +170,52 @@ function renderCouponCard() {
     ${couponError ? `<p class="error-text" style="margin-top:8px;">${couponError}</p>` : ''}
   `;
 
+  if (suggestedCoupon) {
+    document.getElementById('coupon-suggest-apply-btn').addEventListener('click', () => {
+      appliedCoupon = { code: suggestedCoupon.code, discount: suggestedCoupon.discount };
+      renderCouponCard();
+      updateTotalDisplay();
+      UI.toast(`Promo code applied — ${currency(appliedCoupon.discount)} off`, { type: 'success' });
+    });
+  }
   document.getElementById('coupon-apply-btn').addEventListener('click', applyCoupon);
   document.getElementById('coupon-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') applyCoupon();
   });
+}
+
+function renderScheduleCard() {
+  const wrap = document.getElementById('schedule-wrap');
+  if (!wrap) return;
+
+  // Bounds mirror the backend: at least 30 minutes out, at most a week.
+  const now = new Date();
+  const min = new Date(now.getTime() + 30 * 60 * 1000);
+  const max = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const toLocalInputValue = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+  wrap.innerHTML = `
+    <p class="eyebrow" style="margin-bottom:10px;">When should we deliver?</p>
+    <div class="filter-chip-row" style="margin-bottom:${scheduleMode === 'later' ? '12px' : '0'};">
+      <button type="button" class="filter-chip schedule-mode-btn ${scheduleMode === 'now' ? 'active' : ''}" data-mode="now">As soon as possible</button>
+      <button type="button" class="filter-chip schedule-mode-btn ${scheduleMode === 'later' ? 'active' : ''}" data-mode="later">Schedule for later</button>
+    </div>
+    ${scheduleMode === 'later' ? `
+      <input type="datetime-local" id="schedule-input" value="${scheduledForValue || toLocalInputValue(min)}" min="${toLocalInputValue(min)}" max="${toLocalInputValue(max)}" style="width:100%; background:var(--glass); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:11px 14px; color:var(--ink); font-size:14px;" />
+      <p class="helper-text" style="margin-top:8px;">We'll aim to have it there around this time.</p>
+    ` : ''}
+  `;
+
+  wrap.querySelectorAll('.schedule-mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      scheduleMode = btn.dataset.mode;
+      if (scheduleMode === 'later' && !scheduledForValue) scheduledForValue = toLocalInputValue(min);
+      renderScheduleCard();
+    });
+  });
+
+  const input = document.getElementById('schedule-input');
+  if (input) input.addEventListener('change', () => { scheduledForValue = input.value; });
 }
 
 async function applyCoupon() {
@@ -363,6 +425,13 @@ async function placeOrder() {
     return;
   }
 
+  if (scheduleMode === 'later' && !scheduledForValue) {
+    errorText.textContent = 'Please pick a delivery time, or switch back to "As soon as possible".';
+    errorText.style.display = 'block';
+    document.getElementById('schedule-wrap').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Submitting order…';
 
@@ -378,6 +447,8 @@ async function placeOrder() {
       // Re-validated and recomputed server-side — this is never trusted
       // as the actual discount, just tells the backend which code to apply.
       couponCode: appliedCoupon?.code || undefined,
+      // Re-validated server-side too (min 30 min / max 7 days out).
+      scheduledFor: scheduleMode === 'later' ? new Date(scheduledForValue).toISOString() : undefined,
     });
     Sound.orderPlaced();
     await UI.alert("Your order has been submitted and is awaiting review. We'll notify you as soon as it's approved.", {

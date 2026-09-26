@@ -52,6 +52,67 @@ async function validateCouponForUser({ code, subtotal, userId }) {
 exports.computeDiscount = computeDiscount;
 exports.validateCouponForUser = validateCouponForUser;
 
+// GET /api/admin/coupons/stats
+// Redemptions + total discount given, per code, computed straight from the
+// Order collection (the source of truth) rather than trusting Coupon.timesUsed
+// alone - cancelled orders are excluded so a cancelled redemption doesn't
+// count against the code's real impact.
+exports.getCouponStats = async (req, res, next) => {
+  try {
+    const rows = await Order.aggregate([
+      { $match: { couponCode: { $exists: true, $ne: null }, orderStatus: { $ne: 'cancelled' } } },
+      { $group: { _id: '$couponCode', redemptions: { $sum: 1 }, totalDiscount: { $sum: '$discountAmount' } } },
+      { $sort: { totalDiscount: -1 } },
+    ]);
+    const totals = rows.reduce(
+      (acc, r) => ({ redemptions: acc.redemptions + r.redemptions, totalDiscount: acc.totalDiscount + r.totalDiscount }),
+      { redemptions: 0, totalDiscount: 0 }
+    );
+    res.json({
+      byCode: rows.map((r) => ({ code: r._id, redemptions: r.redemptions, totalDiscount: r.totalDiscount })),
+      totals,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/coupons/best?subtotal=X  (logged in)
+// Checkout calls this on load to proactively surface a code the customer
+// qualifies for, instead of making them already know one exists. Picks the
+// single best-value eligible code rather than listing all of them, since
+// showing every active promo would just train people to always wait for one.
+exports.getBestCoupon = async (req, res, next) => {
+  try {
+    const subtotal = Number(req.query.subtotal) || 0;
+    const candidates = await Coupon.find({
+      active: true,
+      minOrderAmount: { $lte: subtotal },
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    });
+
+    let best = null;
+    for (const coupon of candidates) {
+      if (coupon.usageLimit != null && coupon.timesUsed >= coupon.usageLimit) continue;
+      if (coupon.perUserLimit != null) {
+        const usedByUser = await Order.countDocuments({
+          user: req.user._id,
+          couponCode: coupon.code,
+          orderStatus: { $ne: 'cancelled' },
+        });
+        if (usedByUser >= coupon.perUserLimit) continue;
+      }
+      const discount = computeDiscount(coupon, subtotal);
+      if (!best || discount > best.discount) best = { coupon, discount };
+    }
+
+    if (!best) return res.json({ coupon: null });
+    res.json({ coupon: { code: best.coupon.code, type: best.coupon.type, value: best.coupon.value }, discount: best.discount });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // POST /api/coupons/validate  { code, subtotal }  (logged in)
 // Preview-only: tells the checkout page what the discount WOULD be. The
 // real application happens again, server-side, inside placeOrder.

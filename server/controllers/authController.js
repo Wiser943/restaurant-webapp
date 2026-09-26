@@ -68,11 +68,13 @@ exports.getMe = async (req, res) => {
 // PATCH /api/auth/profile  { name?, phone?, avatarUrl? }
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, phone, avatarUrl } = req.body;
+    const { name, phone, avatarUrl, notifyOrderUpdates, notifyPromotions } = req.body;
     const user = await User.findById(req.user._id);
     if (name !== undefined) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
     if (avatarUrl !== undefined) user.avatarUrl = avatarUrl.trim();
+    if (notifyOrderUpdates !== undefined) user.notifyOrderUpdates = !!notifyOrderUpdates;
+    if (notifyPromotions !== undefined) user.notifyPromotions = !!notifyPromotions;
     await user.save();
     res.json({ user: await User.findById(user._id).select('-passwordHash') });
   } catch (err) {

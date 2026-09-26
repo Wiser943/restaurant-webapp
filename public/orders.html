@@ -28,30 +28,38 @@
   <div class="container" id="orders-container" style="padding-top: 12px;">
     <p class="eyebrow">Order history</p>
     <h1 class="display" style="margin-bottom: 20px;">Your orders</h1>
-    <div id="orders-content"><p class="helper-text">Loading…</p></div>
+    <div id="orders-content"></div>
   </div>
 
   <div id="tabbar"></div>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="js/api.js"></script>
   <script src="js/push.js"></script>
   <script src="js/nav.js"></script>
   <script>
-  const container = document.getElementById("orders-container");
-    async function loadOrders() {
-  let orders = [];
-  try {
-    const data = await api.get('/orders');
-    // Safely extract array whether backend sends { orders: [...] } or direct array [...]
-    orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
-  } catch (e) {
-    /* ignore or console.error(e) */
-  }
+    const content = document.getElementById("orders-content");
 
-  if (!orders.length) {
-    container.innerHTML = '<div class="empty-state"><p class="eyebrow">No orders found</p></div>';
-    return;
-  }
+    function renderSkeleton() {
+      content.innerHTML = Array.from({ length: 4 }).map(() => `
+        <div class="card skeleton-block" style="height:64px; margin-bottom:12px;"></div>
+      `).join('');
+    }
+
+    async function loadOrders() {
+      let orders = [];
+      try {
+        const data = await api.get('/orders');
+        // Safely extract array whether backend sends { orders: [...] } or direct array [...]
+        orders = Array.isArray(data) ? data : (data?.orders || data?.data || []);
+      } catch (e) {
+        /* ignore or console.error(e) */
+      }
+
+      if (!orders.length) {
+        content.innerHTML = '<div class="empty-state"><p class="eyebrow">No orders found</p></div>';
+        return;
+      }
 
       const deliveryMap = { preparing: ['badge-pending', 'fa-fire-burner', 'Preparing'], out_for_delivery: ['badge-approved', 'fa-motorcycle', 'Out for delivery'], completed: ['badge-approved', 'fa-circle-check', 'Delivered'] };
 
@@ -64,20 +72,57 @@
         return ['badge-approved', 'Confirmed'];
       }
 
-      container.innerHTML = orders.map((o) => {
+      content.innerHTML = orders.map((o) => {
         const [cls, label] = orderBadge(o);
         const delivery = deliveryMap[o.orderStatus];
         return `
-          <a href="order.html?id=${o._id}" class="card order-list-row">
-            <div>
-              <p style="margin:0 0 4px; font-weight:600;">Order #${o.orderNumber || o._id.slice(-6).toUpperCase()}</p>
-              <p class="helper-text" style="margin:0;">${new Date(o.createdAt).toLocaleDateString()} · ${currency(o.totalAmount)}</p>
-            </div>
-            <span class="badge ${delivery ? delivery[0] : cls}">${delivery ? `<i class="fa-solid ${delivery[1]}"></i> ${delivery[2]}` : label}</span>
-          </a>`;
+          <div class="card order-list-row">
+            <a href="order.html?id=${o._id}" class="order-row-link">
+              <div>
+                <p style="margin:0 0 4px; font-weight:600;">Order #${o.orderNumber || o._id.slice(-6).toUpperCase()}</p>
+                <p class="helper-text" style="margin:0;">${new Date(o.createdAt).toLocaleDateString()} · ${currency(o.totalAmount)}</p>
+                ${o.scheduledFor ? `<p class="helper-text" style="margin:2px 0 0;"><i class="fa-regular fa-clock"></i> Scheduled ${new Date(o.scheduledFor).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
+              </div>
+              <span class="badge ${delivery ? delivery[0] : cls}">${delivery ? `<i class="fa-solid ${delivery[1]}"></i> ${delivery[2]}` : label}</span>
+            </a>
+            <button type="button" class="btn btn-ghost btn-icon reorder-row-btn" data-id="${o._id}" aria-label="Reorder"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>`;
       }).join('');
+
+      content.querySelectorAll('.reorder-row-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const o = orders.find((x) => x._id === btn.dataset.id);
+          if (!o) return;
+          btn.disabled = true;
+          const originalIcon = btn.innerHTML;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+          const { added, skipped } = await reorderToCart(o.items);
+          if (!added) {
+            UI.toast('None of these items are available right now.', { type: 'danger' });
+            btn.disabled = false;
+            btn.innerHTML = originalIcon;
+            return;
+          }
+          UI.toast(skipped ? `Added ${added} item${added === 1 ? '' : 's'} — ${skipped} no longer available.` : 'Added to your cart!', { type: 'success' });
+          window.location.href = 'cart.html';
+        });
+      });
     }
+
+    renderSkeleton();
     loadOrders();
+
+    // Live updates: an admin approving/rejecting/advancing any of this
+    // customer's orders re-fetches the list immediately, no refresh needed.
+    (async () => {
+      let me;
+      try { me = await api.get('/auth/me'); } catch (e) { return; }
+      const socket = io();
+      socket.emit('join:user', me.user._id);
+      socket.on('order:statusChanged', loadOrders);
+      socket.on('order:updated', loadOrders);
+      socket.on('order:new', loadOrders);
+    })();
   </script>
 </body>
 </html>

@@ -246,6 +246,7 @@ function render() {
   document.getElementById('order-content').innerHTML = `
     <p class="eyebrow">Order #${order.orderNumber || order._id.slice(-6).toUpperCase()}</p>
     <h1 class="display" style="margin-bottom:20px;">${heading}</h1>
+    ${order.scheduledFor ? `<p class="helper-text" style="margin:-12px 0 16px;"><i class="fa-regular fa-clock"></i> Scheduled for ${new Date(order.scheduledFor).toLocaleString('en-NG', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>` : ''}
 
     ${showTracker ? `
       <div class="order-steps">
@@ -286,12 +287,33 @@ function render() {
       <div class="cart-total"><span>Total</span><span class="price">${currency(order.totalAmount)}</span></div>
     </div>
     <a href="support.html?order=${encodeURIComponent(order.orderNumber || '')}" class="btn btn-ghost btn-block" style="margin-top:16px;"><i class="fa-regular fa-comment-dots"></i> Have an issue? Message support</a>
+    <button id="reorder-btn" class="btn btn-primary btn-block" style="margin-top:10px;"><i class="fa-solid fa-rotate-right"></i> Reorder these items</button>
   `;
+
+  document.getElementById('reorder-btn').addEventListener('click', reorderItems);
 
   if (!showTracker && order.reviewStatus === 'approved' && order.paymentMethod === 'bank_transfer'
       && (order.paymentStatus === 'awaiting_payment' || order.paymentStatus === 'rejected')) {
     wirePaymentCard();
   }
+}
+
+async function reorderItems() {
+  const btn = document.getElementById('reorder-btn');
+  btn.disabled = true;
+  btn.textContent = 'Adding to cart…';
+
+  const { added, skipped } = await reorderToCart(order.items);
+
+  if (!added) {
+    UI.toast('None of these items are available right now.', { type: 'danger' });
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Reorder these items';
+    return;
+  }
+
+  UI.toast(skipped ? `Added ${added} item${added === 1 ? '' : 's'} — ${skipped} no longer available.` : 'Added to your cart!', { type: 'success' });
+  window.location.href = 'cart.html';
 }
 
 // Live updates: as soon as the admin approves/rejects/adjusts, or the

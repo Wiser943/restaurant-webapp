@@ -145,6 +145,7 @@ async function fetchAndRender() {
           <p style="margin:0 0 4px; font-weight:600; font-family:var(--font-mono); font-size:13px;">${o.orderNumber || ('#' + o._id.slice(-6).toUpperCase())}</p>
           <p class="helper-text" style="margin:0;">${o.user?.name || 'Customer'} · ${o.user?.phone || o.user?.email || ''}</p>
           <p class="helper-text" style="margin:0;">${new Date(o.createdAt).toLocaleString()}</p>
+          ${o.scheduledFor ? `<span class="badge badge-pending" style="margin-top:6px; display:inline-block;"><i class="fa-regular fa-clock"></i> Scheduled: ${new Date(o.scheduledFor).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>` : ''}
         </div>
         <div style="text-align:right;">
           <span class="price" style="font-family:var(--font-mono); color:var(--orange-soft);">${currency(o.totalAmount)}</span>
