@@ -49,11 +49,7 @@ function render(stats) {
     <div class="profile-section">
       <p class="profile-section-title">Admin Panel</p>
       <div class="card profile-row-list">
-        <div class="profile-row" onclick="window.location.href='index.html'">
-          <span class="profile-row-icon"><i class="fa-solid fa-chart-simple"></i></span>
-          <span class="profile-row-label">Dashboard</span>
-          <i class="fa-solid fa-chevron-right profile-row-chevron"></i>
-        </div>
+      
         <div class="profile-row" onclick="window.location.href='index.html'">
           <span class="profile-row-icon"><i class="fa-solid fa-bag-shopping"></i></span>
           <span class="profile-row-label">Manage Orders</span>
@@ -70,7 +66,7 @@ function render(stats) {
           <i class="fa-solid fa-chevron-right profile-row-chevron"></i>
         </div>
                 <div class="profile-row" onclick="window.location.href='reviews.html'">
-          <span class="profile-row-icon"><i class="fa-solid fa-review"></i></span>
+<span class="profile-row-icon"><i class="fa-solid fa-chart-simple"></i></span>
           <span class="profile-row-label">Reviews</span>
           <i class="fa-solid fa-chevron-right profile-row-chevron"></i>
         </div>
@@ -120,8 +116,10 @@ function render(stats) {
   document.getElementById('row-personal').addEventListener('click', editPersonalInfo);
   document.getElementById('row-password').addEventListener('click', changePassword);
   document.getElementById('row-notifications').addEventListener('click', async () => {
-    try { await Push.subscribe();
-      UI.toast('Notifications enabled on this device.', { type: 'success' }); }
+    try {
+      await Push.subscribe();
+      UI.toast('Notifications enabled on this device.', { type: 'success' });
+    }
     catch (e) { UI.toast('Could not enable notifications.', { type: 'danger' }); }
   });
   document.getElementById('logout-row').addEventListener('click', async () => {
