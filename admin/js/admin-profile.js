@@ -5,18 +5,18 @@ let adminUser = null;
 async function loadAdminProfile() {
   adminUser = await requireAdmin();
   if (!adminUser) return;
-
+  
   const [ordersData, menuData, suppliersData] = await Promise.allSettled([
     api.get('/admin/orders'),
     api.get('/menu'),
     api.get('/admin/suppliers'),
   ]);
-
+  
   const totalOrders = ordersData.status === 'fulfilled' ? ordersData.value.orders.length : 0;
   const pending = ordersData.status === 'fulfilled' ? ordersData.value.orders.filter((o) => o.reviewStatus === 'pending').length : 0;
   const activeItems = menuData.status === 'fulfilled' ? menuData.value.items.filter((i) => i.isAvailable).length : 0;
   const teamMembers = suppliersData.status === 'fulfilled' ? suppliersData.value.suppliers.length : 0;
-
+  
   render({ totalOrders, pending, activeItems, teamMembers });
 }
 
@@ -69,6 +69,16 @@ function render(stats) {
           <span class="profile-row-label">Customers &amp; Suppliers</span>
           <i class="fa-solid fa-chevron-right profile-row-chevron"></i>
         </div>
+                <div class="profile-row" onclick="window.location.href='reviews.html'">
+          <span class="profile-row-icon"><i class="fa-solid fa-review"></i></span>
+          <span class="profile-row-label">Reviews</span>
+          <i class="fa-solid fa-chevron-right profile-row-chevron"></i>
+        </div>
+                <div class="profile-row" onclick="window.location.href='coupons.html'">
+          <span class="profile-row-icon"><i class="fa-solid fa-gift"></i></span>
+          <span class="profile-row-label">Coupons</span>
+          <i class="fa-solid fa-chevron-right profile-row-chevron"></i>
+        </div>
         <div class="profile-row" onclick="window.location.href='settings.html'">
           <span class="profile-row-icon"><i class="fa-solid fa-gear"></i></span>
           <span class="profile-row-label">Settings</span>
@@ -105,12 +115,13 @@ function render(stats) {
       </div>
     </div>
   `;
-
+  
   document.getElementById('avatar-btn').addEventListener('click', changeAvatar);
   document.getElementById('row-personal').addEventListener('click', editPersonalInfo);
   document.getElementById('row-password').addEventListener('click', changePassword);
   document.getElementById('row-notifications').addEventListener('click', async () => {
-    try { await Push.subscribe(); UI.toast('Notifications enabled on this device.', { type: 'success' }); }
+    try { await Push.subscribe();
+      UI.toast('Notifications enabled on this device.', { type: 'success' }); }
     catch (e) { UI.toast('Could not enable notifications.', { type: 'danger' }); }
   });
   document.getElementById('logout-row').addEventListener('click', async () => {
