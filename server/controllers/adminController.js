@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const SupportMessage = require('../models/SupportMessage');
 const User = require('../models/User');
+const Coupon = require('../models/Coupon');
 const { getIO } = require('../config/socket');
 const chowdeck = require('../services/chowdeckClient');
 const { sendPushToUser } = require('../utils/sendPush');
@@ -238,6 +239,33 @@ exports.updateOrderStatus = async (req, res, next) => {
 // GET /api/admin/users?role=&search=&status=&page=&limit=&sort=
 // Powers the admin "Users Management" page: stat cards + a searchable,
 // paginated table covering BOTH customers and suppliers (role tells them apart).
+// DELETE /api/admin/orders/:id
+// Permanent removal - for cleaning up test/duplicate/spam orders. Unlike
+// cancelOrder (customer-facing, keeps the record with orderStatus
+// "cancelled"), this actually deletes the document. Frees up any coupon
+// usage slot the order was holding, same as cancelOrder does.
+exports.deleteOrder = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+
+    if (order.couponCode) {
+      Coupon.updateOne({ code: order.couponCode }, { $inc: { timesUsed: -1 } }).catch((err) =>
+        console.error('[deleteOrder] coupon usage decrement failed:', err.message)
+      );
+    }
+
+    await Order.findByIdAndDelete(req.params.id);
+
+    getIO().to(`user:${order.user}`).emit('order:deleted', { id: order._id });
+    getIO().to('admins').emit('order:deleted', { id: order._id });
+
+    res.json({ message: 'Order deleted.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getUsersOverview = async (req, res, next) => {
   try {
     const { role, search, status, page = 1, limit = 10, sort = 'newest' } = req.query;

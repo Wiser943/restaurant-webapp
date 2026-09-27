@@ -1,12 +1,19 @@
 // Logic for the cart page
 
 let cart = { items: [] };
+let isGuest = false;
 
 async function loadCart() {
   try {
-    const me = await api.get('/auth/me');
+    await api.get('/auth/me');
+    isGuest = false;
   } catch (e) {
-    window.location.href = 'login.html?next=cart.html';
+    isGuest = true;
+  }
+
+  if (isGuest) {
+    cart = { items: GuestCart.getItems() };
+    renderCart();
     return;
   }
 
@@ -100,6 +107,12 @@ function escapeHtml(str) {
 
 async function changeQty(lineId, newQty) {
   if (newQty <= 0) { await removeItem(lineId); return; }
+  if (isGuest) {
+    cart = { items: GuestCart.updateQuantity(lineId, newQty) };
+    renderCart();
+    renderNav();
+    return;
+  }
   const data = await api.put(`/cart/${lineId}`, { quantity: newQty });
   cart = data.cart;
   renderCart();
@@ -109,6 +122,12 @@ async function changeQty(lineId, newQty) {
 async function removeItem(lineId) {
   const confirmed = await UI.confirm('Remove this item from your cart?', { title: 'Remove item', confirmText: 'Remove', danger: true });
   if (!confirmed) return;
+  if (isGuest) {
+    cart = { items: GuestCart.remove(lineId) };
+    renderCart();
+    renderNav();
+    return;
+  }
   const data = await api.del(`/cart/${lineId}`);
   cart = data.cart;
   renderCart();

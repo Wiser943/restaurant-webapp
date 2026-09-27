@@ -310,7 +310,6 @@ function updateAddButton() {
   const total = item.currentPrice * quantity + extrasTotal();
   btn.disabled = !item.isAvailable;
   if (!item.isAvailable) btn.textContent = 'Currently unavailable';
-  else if (!currentUser) btn.textContent = 'Log in to order';
   else btn.textContent = `Add to Cart · ${currency(total)}`;
 }
 
@@ -328,7 +327,6 @@ async function toggleFavorite() {
 }
 
 async function handleAdd() {
-  if (!currentUser) { window.location.href = `login.html?next=item.html?id=${itemId}`; return; }
   const btn = document.getElementById('add-btn');
   btn.disabled = true;
   btn.textContent = 'Adding…';
@@ -336,7 +334,13 @@ async function handleAdd() {
     const extras = Object.entries(selectedExtras)
       .filter(([, qty]) => qty > 0)
       .map(([name, qty]) => ({ name, quantity: qty }));
-    await api.post('/cart', { menuItemId: itemId, quantity, extras });
+
+    if (currentUser) {
+      await api.post('/cart', { menuItemId: itemId, quantity, extras });
+    } else {
+      GuestCart.add(item, quantity, extras);
+    }
+
     btn.innerHTML = 'Added to cart <i class="fa-solid fa-check"></i>';
     UI.toast('Added to your cart', { type: 'success' });
     setTimeout(updateAddButton, 1400);

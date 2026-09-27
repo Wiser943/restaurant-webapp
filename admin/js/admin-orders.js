@@ -114,6 +114,7 @@ function renderActions(o) {
     buttons.push(`<button class="btn btn-ghost btn-sm dispatch-btn" data-id="${o._id}"><i class="fa-solid fa-truck-fast"></i> Dispatch</button>`);
   }
   buttons.push(`<a class="btn btn-ghost btn-sm" href="support.html?userId=${o.user?._id || ''}"><i class="fa-regular fa-comment-dots"></i> Message customer</a>`);
+  buttons.push(`<button class="btn btn-ghost btn-sm delete-order-btn" data-id="${o._id}" style="color:#e05a5a;"><i class="fa-solid fa-trash-can"></i> Delete</button>`);
 
   return buttons.join('');
 }
@@ -241,6 +242,24 @@ async function fetchAndRender() {
       await api.patch(`/admin/orders/${btn.dataset.id}/dispatch`, { etaMinutes: Number(eta) || 30 });
       UI.toast('Order dispatched — customer notified', { type: 'success' });
       fetchAndRender();
+    });
+  });
+
+  list.querySelectorAll('.delete-order-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ok = await UI.confirm('Permanently delete this order? This cannot be undone and removes it from the customer\'s order history too.', {
+        title: 'Delete order',
+        confirmText: 'Delete permanently',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await api.del(`/admin/orders/${btn.dataset.id}`);
+        UI.toast('Order deleted', { type: 'success' });
+        fetchAndRender();
+      } catch (err) {
+        UI.toast(err.message, { type: 'danger' });
+      }
     });
   });
 }

@@ -286,15 +286,45 @@ function render() {
         </div>` : ''}
       <div class="cart-total"><span>Total</span><span class="price">${currency(order.totalAmount)}</span></div>
     </div>
+    ${order.reviewStatus === 'pending' && order.orderStatus === 'pending' ? `
+      <button id="cancel-order-btn" class="btn btn-ghost btn-block" style="margin-top:16px; color:var(--rose, #e05a5a);"><i class="fa-regular fa-circle-xmark"></i> Cancel this order</button>
+    ` : ''}
     <a href="support.html?order=${encodeURIComponent(order.orderNumber || '')}" class="btn btn-ghost btn-block" style="margin-top:16px;"><i class="fa-regular fa-comment-dots"></i> Have an issue? Message support</a>
     <button id="reorder-btn" class="btn btn-primary btn-block" style="margin-top:10px;"><i class="fa-solid fa-rotate-right"></i> Reorder these items</button>
   `;
 
   document.getElementById('reorder-btn').addEventListener('click', reorderItems);
+  const cancelBtn = document.getElementById('cancel-order-btn');
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelOrder);
 
   if (!showTracker && order.reviewStatus === 'approved' && order.paymentMethod === 'bank_transfer'
       && (order.paymentStatus === 'awaiting_payment' || order.paymentStatus === 'rejected')) {
     wirePaymentCard();
+  }
+}
+
+async function cancelOrder() {
+  const ok = await UI.confirm('Cancel this order? This cannot be undone.', {
+    title: 'Cancel order',
+    confirmText: 'Yes, cancel it',
+    cancelText: 'Keep order',
+    danger: true,
+  });
+  if (!ok) return;
+
+  const btn = document.getElementById('cancel-order-btn');
+  btn.disabled = true;
+  btn.textContent = 'Cancelling…';
+
+  try {
+    const data = await api.post(`/orders/${order._id}/cancel`);
+    order = data.order;
+    UI.toast('Order cancelled.', { type: 'success' });
+    render();
+  } catch (err) {
+    UI.toast(err.message, { type: 'danger' });
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Cancel this order';
   }
 }
 
@@ -337,6 +367,12 @@ socket.on('order:statusChanged', (updated) => {
     previousPaymentStatus = updated.paymentStatus;
     order = updated;
     render();
+  }
+});
+socket.on('order:deleted', ({ id }) => {
+  if (id === orderId) {
+    UI.toast('This order was removed.', { type: 'info' });
+    window.location.href = 'orders.html';
   }
 });
 

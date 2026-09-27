@@ -300,3 +300,45 @@ exports.getOrderById = async (req, res, next) => {
     next(err);
   }
 };
+
+// POST /api/orders/:id/cancel
+// Self-serve cancel, only while the order is still sitting in an admin's
+// review queue - the exact "common ask right before admin approval" window.
+// Once an admin has approved/rejected it (or it's moved past "pending"),
+// the kitchen may already be acting on it, so we point the customer to
+// support instead rather than silently cancelling underneath them.
+exports.cancelOrder = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to cancel this order.' });
+    }
+
+    if (order.reviewStatus !== 'pending' || order.orderStatus !== 'pending') {
+      return res.status(400).json({
+        message: 'This order is already being processed and can no longer be cancelled here — message support instead.',
+      });
+    }
+
+    order.orderStatus = 'cancelled';
+    order.reviewStatus = 'rejected'; // pulls it out of the admin's "pending review" queue
+    order.rejectionReason = 'Cancelled by customer before review.';
+    await order.save();
+
+    // Free up the promo code's usage slot - it was never actually redeemed.
+    if (order.couponCode) {
+      Coupon.updateOne({ code: order.couponCode }, { $inc: { timesUsed: -1 } }).catch((err) =>
+        console.error('[cancelOrder] coupon usage decrement failed:', err.message)
+      );
+    }
+
+    getIO().to(`user:${order.user}`).emit('order:statusChanged', order);
+    getIO().to('admins').emit('order:updated', order);
+
+    res.json({ order });
+  } catch (err) {
+    next(err);
+  }
+};

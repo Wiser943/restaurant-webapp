@@ -80,6 +80,8 @@ async function renderNav() {
       try { lastSeen = Number(localStorage.getItem('vck_notif_last_seen') || 0); } catch (e) { /* ignore */ }
       hasUnseenNotifications = latest > lastSeen;
     } catch (e) { /* ignore */ }
+  } else if (window.GuestCart) {
+    cartCount = GuestCart.count();
   }
 
   if (topbarEl) {

@@ -35,6 +35,7 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/guest-cart.js"></script>
   <script src="js/push.js"></script>
   <script src="js/nav.js"></script>
   <script>
@@ -86,8 +87,30 @@
               <span class="badge ${delivery ? delivery[0] : cls}">${delivery ? `<i class="fa-solid ${delivery[1]}"></i> ${delivery[2]}` : label}</span>
             </a>
             <button type="button" class="btn btn-ghost btn-icon reorder-row-btn" data-id="${o._id}" aria-label="Reorder"><i class="fa-solid fa-rotate-right"></i></button>
+            ${o.reviewStatus === 'pending' && o.orderStatus === 'pending' ? `<button type="button" class="btn btn-ghost btn-icon cancel-row-btn" data-id="${o._id}" aria-label="Cancel order" style="color:#e05a5a;"><i class="fa-regular fa-circle-xmark"></i></button>` : ''}
           </div>`;
       }).join('');
+
+      content.querySelectorAll('.cancel-row-btn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const ok = await UI.confirm('Cancel this order? This cannot be undone.', {
+            title: 'Cancel order',
+            confirmText: 'Yes, cancel it',
+            cancelText: 'Keep order',
+            danger: true,
+          });
+          if (!ok) return;
+          btn.disabled = true;
+          try {
+            await api.post(`/orders/${btn.dataset.id}/cancel`);
+            UI.toast('Order cancelled.', { type: 'success' });
+            loadOrders();
+          } catch (err) {
+            UI.toast(err.message, { type: 'danger' });
+            btn.disabled = false;
+          }
+        });
+      });
 
       content.querySelectorAll('.reorder-row-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
@@ -122,6 +145,7 @@
       socket.on('order:statusChanged', loadOrders);
       socket.on('order:updated', loadOrders);
       socket.on('order:new', loadOrders);
+      socket.on('order:deleted', loadOrders);
     })();
   </script>
 </body>

@@ -40,14 +40,18 @@
       <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Log in</button>
     </form>
 
-    <p class="auth-switch">New here? <a href="signup.html">Create an account</a></p>
+    <p class="auth-switch">New here? <a href="signup.html" id="signup-link">Create an account</a></p>
     <p class="auth-switch"><a href="index.html">← Back to the menu</a></p>
   </div>
 
   <script src="js/api.js"></script>
+  <script src="js/guest-cart.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next') || 'index.html';
+    if (params.get('next')) {
+      document.getElementById('signup-link').href = `signup.html?next=${encodeURIComponent(params.get('next'))}`;
+    }
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -61,6 +65,7 @@
           email: document.getElementById('email').value,
           password: document.getElementById('password').value,
         });
+        if (user.role === 'customer') await GuestCart.mergeIntoAccount();
         if (user.role === 'admin') window.location.href = params.get('next') || '/admin/index.html';
         else if (user.role === 'supplier') window.location.href = params.get('next') || '/supplier/index.html';
         else window.location.href = next;

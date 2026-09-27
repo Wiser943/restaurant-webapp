@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, adminOnly } = require('../middleware/auth');
 const {
   getAllOrders,
+  deleteOrder,
   reviewApproveOrder,
   approvePayment,
   rejectPayment,
@@ -41,6 +42,7 @@ router.use(protect, adminOnly); // everything below requires an admin session
 
 // Order review / payment approval
 router.get('/orders', getAllOrders);
+router.delete('/orders/:id', deleteOrder);
 router.patch('/orders/:id/review-approve', reviewApproveOrder);
 router.patch('/orders/:id/approve', approvePayment);
 router.patch('/orders/:id/reject', rejectPayment);
